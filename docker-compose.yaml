@@ -32,6 +32,9 @@ services:
       - kafka_data:/bitnami
 
   postgres:
+    build:
+      context: .
+      dockerfile: docker/bronze_pg.Dockerfile 
     image: bronze_pg:latest
     environment:
       - POSTGRES_DB=metadata
@@ -45,7 +48,7 @@ services:
   ingest_api:
     build:
       context: .
-      dockerfile: ingest_api.Dockerfile 
+      dockerfile: docker/ingest_api.Dockerfile 
     image: ingest_api:latest
     env_file:
       - .env_container
@@ -55,7 +58,7 @@ services:
   storage_api:
     build:
       context: .
-      dockerfile: storage_api.Dockerfile 
+      dockerfile: docker/storage_api.Dockerfile 
     image: storage_api:latest
     env_file:
       - .env_container
@@ -78,7 +81,7 @@ services:
   ingest_sftp:
     build:
       context: .
-      dockerfile: ingest_sftp.Dockerfile
+      dockerfile: docker/ingest_sftp.Dockerfile
     image: ingest_sftp:latest
     env_file:
       - .env_container

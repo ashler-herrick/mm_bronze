@@ -12,7 +12,7 @@ wheels/
 .venv
 
 #test_data
-tests/test_data
+tests/test_data/
 
 
 #sftp 
