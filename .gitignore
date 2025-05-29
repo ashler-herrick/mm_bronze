@@ -11,6 +11,9 @@ wheels/
 # Virtual environments
 .venv
 
+#test_data
+tests/test_data
+
 
 #sftp 
 users.conf
