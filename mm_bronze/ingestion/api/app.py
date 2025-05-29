@@ -4,17 +4,17 @@ Entrypoint for the FastAPI application using lifespan event handlers.
 - Includes API routers
 - Manages startup/shutdown via lifespan context
 """
+
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-import logging
 
 from mm_bronze.common.kafka import init_async_producer, close_async_producer
+from mm_bronze.common.log_config import configure_logging
 from mm_bronze.ingestion.api.api import router as ingestion_router
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s │ %(message)s",
-)
+
+configure_logging()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-    # Shutdown: close Kafka producer gracefully
+        # Shutdown: close Kafka producer gracefully
         await close_async_producer()
 
 

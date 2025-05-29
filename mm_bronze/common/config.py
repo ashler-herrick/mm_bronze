@@ -10,16 +10,23 @@ class Settings(BaseSettings):
     """
 
     # — Kafka —
-    kafka_servers: str = Field(
-        ..., description="Comma-separated bootstrap servers"
-    )
-    kafka_api_raw_group: str = Field(
+    kafka_servers: str = Field(..., description="Comma-separated bootstrap servers")
+    kafka_bronze_api_topic: str = Field(
         ..., description="Consumer group for ingestion from the API"
     )
-    kafka_api_raw_topic: str = Field(
+
+    kafka_bronze_api_group: str = Field(
         ..., description="Topic for raw ingestion from the API"
     )
-    
+
+    kafka_bronze_sftp_topic: str = Field(
+        ..., description="Topic for notifying that data has been ingested through SFTP"
+    )
+
+    kafka_bronze_sftp_group: str = Field(
+        ..., description="Consumer group for handling SFTP files"
+    )
+
     kafka_cfg_advertised_listeners: str = Field(
         ..., description="Consumer group for raw sink from the API"
     )
@@ -46,20 +53,29 @@ class Settings(BaseSettings):
         description="Storage location where raw data will be written",
     )
 
+    # — Watcher —
+    watch_root: str = Field(
+        ...,
+        description="Root for the watcher to look at",
+    )
+
     # Pydantic V2 configuration: no env_file so missing vars cause errors
     model_config = ConfigDict(
         case_sensitive=False,  # env var names are case-insensitive
-        env_file=".env",
+        env_file=".env_container",
         env_file_encoding="utf-8",
         env_names={  # explicit mapping to environment variables
             "kafka_servers": "KAFKA_SERVERS",
-            "kafka_api_raw_topic": "KAFKA_API_RAW_TOPIC",
-            "kafka_api_raw_group": "KAFKA_API_RAW_GROUP",
+            "kafka_bronze_api_topic": "KAFKA_BRONZE_API_TOPIC",
+            "kafka_bronze_api_group": "KAFKA_BRONZE_API_GROUP",
+            "kafka_bronze_sftp_topic": "KAFKA_BRONZE_SFTP_TOPIC",
+            "kafka_bronze_sftp_group": "KAFKA_BRONZE_SFTP_GROUP",
             "kafka_cfg_advertised_listeners": "KAFKA_CFG_ADVERTISED_LISTENERS",
             "postgres_dsn": "POSTGRES_DSN",
             "raw_storage_url": "RAW_STORAGE_URL",
             "db_min_size": "DB_MIN_SIZE",
             "db_max_size": "DB_MAX_SIZE",
+            "watch_root": "WATCH_ROOT",
         },
     )
 

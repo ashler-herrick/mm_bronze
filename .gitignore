@@ -7,8 +7,15 @@ wheels/
 *.egg-info
 .pytest_cache
 
+
 # Virtual environments
 .venv
+
+
+#sftp 
+users.conf
+ssh_host*
+
 #dotenv
 .env
 .env_local

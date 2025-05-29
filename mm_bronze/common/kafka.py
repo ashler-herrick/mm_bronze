@@ -37,7 +37,7 @@ async def init_async_consumer(
     Create & start the singleton AIOKafkaConsumer, with retry on bootstrap failure.
     """
     if not topic:
-        topic = settings.kafka_api_raw_topic
+        topic = settings.kafka_bronze_api_topic
 
     if group in _async_consumers:
         return

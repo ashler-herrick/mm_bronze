@@ -9,6 +9,7 @@ from fsspec import url_to_fs, AbstractFileSystem
 
 from mm_bronze.common.config import settings
 
+
 class Compression(str, Enum):
     NONE = "none"
     GZIP = "gzip"
@@ -16,7 +17,7 @@ class Compression(str, Enum):
 
 class AsyncFS:
     """
-    Asynchronous interface for interacting with fsspec-compatible file systems, 
+    Asynchronous interface for interacting with fsspec-compatible file systems,
     supporting pluggable serialization, compression, and cross-filesystem operations.
 
     This class simplifies reading and writing files in async workflows with optional

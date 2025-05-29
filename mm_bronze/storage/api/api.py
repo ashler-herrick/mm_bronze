@@ -65,16 +65,14 @@ def compute_fingerprint(data: bytes) -> bytes:
 
 
 def build_path_by_fp(
-    event: Dict[str, str],
-    fp_hex: str,
-    base_prefix: str = "bronze"
+    event: Dict[str, str], fp_hex: str, base_prefix: str = "bronze"
 ) -> str:
     """
     Construct a storage path using event metadata and fingerprint.
 
     Args:
         event: Dictionary containing keys 'content_type', 'format', 'subtype'.
-        fingerprint: 
+        fingerprint:
         base_prefix: Top-level directory prefix (default 'bronze').
 
     Returns:
@@ -82,20 +80,18 @@ def build_path_by_fp(
     """
     short_fp = fp_hex[:16]
     file_ext = event["format"].lower()
-    return "/".join([
-        base_prefix,
-        event["content_type"],
-        event["format"],
-        event["subtype"],
-        f"{short_fp}.{file_ext}"
-    ])
+    return "/".join(
+        [
+            base_prefix,
+            event["content_type"],
+            event["format"],
+            event["subtype"],
+            f"{short_fp}.{file_ext}",
+        ]
+    )
 
 
-async def store_metadata(
-    event: Dict[str, str],
-    fingerprint: bytes,
-    path: str
-) -> None:
+async def store_metadata(event: Dict[str, str], fingerprint: bytes, path: str) -> None:
     """
     Insert ingestion metadata into the raw_api_ingest table, logging duplicates.
 
@@ -136,11 +132,7 @@ async def store_metadata(
             )
 
 
-async def log_ingestion(
-    object_id: str,
-    status: str,
-    message: Optional[str]
-) -> None:
+async def log_ingestion(object_id: str, status: str, message: Optional[str]) -> None:
     """
     Log ingestion status and optional message to ingestion_log table.
 
@@ -162,12 +154,7 @@ async def log_ingestion(
         )
 
 
-async def write_to_storage(
-    fs: AsyncFS,
-    path: str,
-    data: bytes,
-    uid: str
-) -> None:
+async def write_to_storage(fs: AsyncFS, path: str, data: bytes, uid: str) -> None:
     """
     Write raw payload bytes to storage and log completion or failure.
 

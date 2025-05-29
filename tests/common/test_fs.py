@@ -80,28 +80,8 @@ async def test_async_bytes():
 
 
 async def _debug():
-    local_afs = AsyncFS(DATA_DIR, compression="gzip")
-    await local_afs.write(
-        "test.json",
-        TEST_MESSAGE,
-        lambda f: orjson.dumps(f),
-        mkdirs=True,
-    )
-    src_path = DATA_DIR / "test.json.gz"
-    dest_path = DATA_DIR / "test_copy.json.gz"
-    src = "file://" + str(src_path)
-    dest = "file://" + str(dest_path)
-    print(src)
-    print(dest)
-    await local_afs.copy(src, dest)
-
-    d = await local_afs.read(dest, lambda f: orjson.loads(f), compression="gzip")
-    print(d)
-    assert isinstance(d, dict)
-
-    b = await local_afs.read(dest, lambda b: b, compression="gzip")
-    print(b)
-    assert isinstance(b, bytes)
+    print(TEST_MESSAGE)
+    print(DATA_DIR)
 
 
 if __name__ == "__main__":

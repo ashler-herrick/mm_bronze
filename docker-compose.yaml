@@ -60,6 +60,31 @@ services:
     env_file:
       - .env_container
 
+  sftp:
+    image: atmoz/sftp:latest
+    ports:
+      - "2222:22"
+    volumes:
+      #use keys stored in the sftp folder
+      - ./sftp/ssh_host_ed25519_key:/etc/ssh/ssh_host_ed25519_key:ro
+      - ./sftp/ssh_host_ed25519_key.pub:/etc/ssh/ssh_host_ed25519_key.pub:ro
+      - ./sftp/ssh_host_rsa_key:/etc/ssh/ssh_host_rsa_key:ro
+      - ./sftp/ssh_host_rsa_key.pub:/etc/ssh/ssh_host_rsa_key.pub:ro
+      # config defining the users
+      - ./sftp/users.conf:/etc/sftp/users.conf:ro
+      # uploads directory
+      - ./sftp/data:/home
+
+  ingest_sftp:
+    build:
+      context: .
+      dockerfile: ingest_sftp.Dockerfile
+    image: ingest_sftp:latest
+    env_file:
+      - .env_container
+    volumes:
+      - ./sftp/data:/home:ro
+
 volumes:
   db_data:
   zk_data:

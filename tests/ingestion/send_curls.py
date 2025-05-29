@@ -1,12 +1,11 @@
 from utils import load_fhir_test_data
 import requests
 
-#1. Run docker compose up
-#2. Send post requests of all data in the test folder
+# 1. Run docker compose up
+# 2. Send post requests of all data in the test folder
 data = load_fhir_test_data()
 
 for entry in data:
-    
     with open(entry["path"], "rb") as f:
         payload = f.read()
 
