@@ -46,4 +46,4 @@ USER sftpserver
 EXPOSE 2222
 
 # Run the SFTP server
-CMD ["uv", "run", "python", "/app/mm_bronze/ingestion/sftp/server.py"]
+CMD ["uv", "run", "python", "/app/mm_bronze/ingestion/sftp/app.py"]
