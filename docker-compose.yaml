@@ -13,7 +13,7 @@ services:
     depends_on:
       - zookeeper
     env_file:
-      - .env_container
+      - .env
     environment:
       # Point at ZK
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
@@ -51,7 +51,7 @@ services:
       dockerfile: docker/ingest_api.Dockerfile 
     image: ingest_api:latest
     env_file:
-      - .env_container
+      - .env
     ports:
       - "8000:8000"
 
@@ -61,22 +61,7 @@ services:
       dockerfile: docker/storage_api.Dockerfile 
     image: storage_api:latest
     env_file:
-      - .env_container
-
-  sftp:
-    image: atmoz/sftp:latest
-    ports:
-      - "2222:22"
-    volumes:
-      #use keys stored in the sftp folder
-      - ./sftp/ssh_host_ed25519_key:/etc/ssh/ssh_host_ed25519_key:ro
-      - ./sftp/ssh_host_ed25519_key.pub:/etc/ssh/ssh_host_ed25519_key.pub:ro
-      - ./sftp/ssh_host_rsa_key:/etc/ssh/ssh_host_rsa_key:ro
-      - ./sftp/ssh_host_rsa_key.pub:/etc/ssh/ssh_host_rsa_key.pub:ro
-      # config defining the users
-      - ./sftp/users.conf:/etc/sftp/users.conf:ro
-      # uploads directory
-      - ./sftp/data:/home
+      - .env
 
   ingest_sftp:
     build:
@@ -84,11 +69,31 @@ services:
       dockerfile: docker/ingest_sftp.Dockerfile
     image: ingest_sftp:latest
     env_file:
-      - .env_container
+      - .env
+    environment:
+      # SFTP server configuration
+      - SFTP_HOST=0.0.0.0
+      - SFTP_PORT=2222
+      - SFTP_UPLOAD_ROOT=/uploads
+      - SFTP_HOST_KEY_PATH=/app/keys/ssh_host_rsa_key
+      - SFTP_KEYS_DIR=/app/keys/users
+      # User configuration with new format
+      - SFTP_USERS=alice:secret:read+write+delete|readonly:readonly123:read
+    ports:
+      - "2222:2222"
     volumes:
-      - ./sftp/data:/home:ro
+      # Persistent storage for uploads with federated directories
+      - sftp_uploads:/uploads
+      # Mount SSH keys directory - Split into read-only users and writable host keys
+      - ./keys/users:/app/keys/users:ro  # User public keys (read-only)
+      - sftp_host_keys:/app/keys         # Host keys (writable volume)
+    depends_on:
+      - kafka
+      - postgres
 
 volumes:
   db_data:
   zk_data:
   kafka_data:
+  sftp_uploads:
+  sftp_host_keys:
