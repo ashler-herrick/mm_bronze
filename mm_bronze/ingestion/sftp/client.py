@@ -1,7 +1,3 @@
-"""
-Client connection handling for SFTP server.
-"""
-
 import time
 import logging
 import paramiko
@@ -20,63 +16,71 @@ def handle_client(
     user_manager: UserManager,
     event_loop: asyncio.AbstractEventLoop = None,
 ):
-    """Handles a single SFTP client connection using Paramiko's SSH transport.
-
-    This function sets up the SSH server transport, authenticates the client using
-    the provided `UserManager`, and configures the SFTP subsystem with permission
-    controls and event publishing.
-
-    Args:
-        client: A socket-like object representing the client connection.
-        host_key: The SSH server host key (paramiko.PKey).
-        user_manager (UserManager): Manages user credentials and permissions.
-        event_loop (asyncio.AbstractEventLoop, optional): Event loop for async operations like Kafka publishing.
-
-    Returns:
-        None
-    """
+    """Handles a single SFTP client connection using Paramiko's SSH transport."""
 
     try:
+        logger.info("Creating transport for new client")
         transport = paramiko.Transport(client)
         transport.add_server_key(host_key)
 
         # Create server interface with user manager
+        logger.info("Creating ProductionServer instance")
         server = ProductionServer(user_manager)
 
-        # Setup SFTP subsystem - create a factory function that captures our dependencies
-        def sftp_factory(channel, name, server, *largs, **kwargs):
-            return ProductionSFTPServer(
-                server,
-                user_manager=user_manager,
-                event_loop=event_loop,
-                *largs,
-                **kwargs,
-            )
+        def sftp_factory(ssh_server, *largs, **kwargs):
+            """Factory function for creating SFTP server instances.
+            
+            Args:
+                ssh_server: The SSH server instance (ProductionServer)
+                *largs, **kwargs: Additional arguments
+            """
+            
+            try:
+                sftp_server = ProductionSFTPServer(
+                    ssh_server,
+                    user_manager=user_manager,
+                    event_loop=event_loop,
+                    *largs,
+                    **kwargs,
+                )
+                logger.info(f"Successfully created ProductionSFTPServer: {sftp_server}")
+                return sftp_server
+            except Exception as e:
+                logger.error(f"Failed to create ProductionSFTPServer: {e}")
+                import traceback
+                traceback.print_exc()
+                raise
 
+        # Register the SFTP subsystem
+        logger.info("Registering SFTP subsystem handler")
         transport.set_subsystem_handler("sftp", SFTPServer, sftp_si=sftp_factory)
+        
+        # Start the server
+        logger.info("Starting SSH server")
         transport.start_server(server=server)
 
         # Wait for auth
-        channel = transport.accept(20)
+        logger.info("Waiting for channel establishment...")
+        channel = transport.accept(30)
         if channel is None:
-            logger.warning("No channel established")
+            logger.warning("No channel established within timeout")
             return
 
-        logger.info(f"Client authenticated as user: {server.authenticated_user}")
+        logger.info(f"Channel established! Authenticated user: {server.authenticated_user}")
 
         # Keep connection alive
         try:
             while transport.is_active():
                 time.sleep(1)
         except KeyboardInterrupt:
-            pass
+            logger.info("Keyboard interrupt received")
 
     except Exception as e:
         logger.error(f"Error handling client: {e}")
         import traceback
-
         traceback.print_exc()
     finally:
+        logger.info("Cleaning up client connection")
         try:
             transport.close()
         except:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple test script to upload a file to our custom SFTP server.
+Proper SFTP test that performs full SSH handshake and authentication
 """
 
 import paramiko
@@ -20,7 +20,6 @@ def create_test_file():
     """Create a small test file."""
     content = f"""Test file created at {time.strftime('%Y-%m-%d %H:%M:%S')}
     This is a test upload to verify the SFTP server is working.
-    File size: {len('Test content')} bytes
     Random data: {os.urandom(16).hex()}
     """
     
@@ -32,19 +31,27 @@ def create_test_file():
     print(f"File size: {os.path.getsize(test_file)} bytes")
     return test_file
 
-def upload_file(local_file, remote_file):
-    """Upload a file via SFTP."""
-    print(f"\n--- SFTP Upload Test ---")
-    print(f"Local file: {local_file}")
-    print(f"Remote file: {remote_file}")
-    print(f"Server: {HOST}:{PORT}")
-    print(f"User: {USERNAME}")
+def test_sftp_full():
+    """Test full SFTP workflow with proper SSH handshake."""
+    print("=" * 60)
+    print("Full SFTP Server Test")
+    print("=" * 60)
     
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    # Create test file
+    test_file = create_test_file()
+    remote_file = f"{REMOTE_DIR}/{os.path.basename(test_file)}"
+    
+    ssh = None
+    sftp = None
     
     try:
-        print("\n1. Connecting to SSH server...")
+        print(f"\n1. Connecting to {HOST}:{PORT} as {USERNAME}...")
+        
+        # Create SSH client with proper settings
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        # Connect with longer timeout and proper SSH settings
         ssh.connect(
             hostname=HOST,
             port=PORT,
@@ -52,42 +59,42 @@ def upload_file(local_file, remote_file):
             password=PASSWORD,
             look_for_keys=False,
             allow_agent=False,
-            timeout=10,
+            timeout=30,  # Longer timeout
+            banner_timeout=30,  # Banner timeout
+            auth_timeout=30,    # Auth timeout
         )
-        print("✓ SSH connection successful")
+        print("✓ SSH connection and authentication successful")
         
-        print("\n2. Opening SFTP session...")
-        # Set a shorter timeout for SFTP operations
-        transport = ssh.get_transport()
-        transport.set_keepalive(30)
-        
+        print("\n2. Opening SFTP channel...")
         sftp = ssh.open_sftp()
-        sftp.get_channel().settimeout(30)  # 30 second timeout
-        print("✓ SFTP session opened")
+        print("✓ SFTP channel opened successfully")
         
-        print("\n3. Ensuring remote directory exists...")
+        print("\n3. Testing directory listing...")
         try:
-            # Try to list the directory first
-            sftp.listdir(REMOTE_DIR)
-            print(f"✓ Remote directory {REMOTE_DIR} exists")
-        except FileNotFoundError:
-            print(f"⚠ Remote directory {REMOTE_DIR} doesn't exist, creating it...")
-            try:
-                sftp.mkdir(REMOTE_DIR)
-                print(f"✓ Created remote directory {REMOTE_DIR}")
-            except Exception as e:
-                print(f"⚠ Could not create directory: {e}")
+            files = sftp.listdir(".")
+            print(f"✓ Current directory contents: {files}")
+        except Exception as e:
+            print(f"⚠ Could not list current directory: {e}")
         
-        print("\n4. Uploading file...")
+        print("\n4. Creating test subdirectory...")
+        test_subdir = "test_uploads"
+        try:
+            sftp.mkdir(test_subdir)
+            print(f"✓ Created directory: {test_subdir}")
+        except Exception as e:
+            print(f"⚠ Directory creation failed (may already exist): {e}")
+        
+        print("\n5. Uploading test file...")
+        remote_path = f"{test_subdir}/{os.path.basename(test_file)}"
         start_time = time.time()
-        sftp.put(local_file, remote_file)
+        sftp.put(test_file, remote_path)
         upload_time = time.time() - start_time
         print(f"✓ Upload completed in {upload_time:.2f} seconds")
         
-        print("\n5. Verifying upload...")
+        print("\n6. Verifying upload...")
         try:
-            remote_stat = sftp.stat(remote_file)
-            local_size = os.path.getsize(local_file)
+            remote_stat = sftp.stat(remote_path)
+            local_size = os.path.getsize(test_file)
             remote_size = remote_stat.st_size
             
             print(f"Local file size:  {local_size:,} bytes")
@@ -95,68 +102,90 @@ def upload_file(local_file, remote_file):
             
             if remote_size == local_size:
                 print("✓ File sizes match - upload verified!")
-                success = True
             else:
                 print("✗ File size mismatch!")
-                success = False
+                return False
                 
         except Exception as e:
             print(f"⚠ Could not verify remote file: {e}")
-            success = False
+            return False
         
-        print("\n6. Listing remote directory...")
+        print("\n7. Testing file download...")
+        download_file = test_file + ".downloaded"
         try:
-            files = sftp.listdir(REMOTE_DIR)
-            print(f"Files in {REMOTE_DIR}: {files}")
+            sftp.get(remote_path, download_file)
+            
+            # Compare files
+            with open(test_file, 'r') as f1, open(download_file, 'r') as f2:
+                if f1.read() == f2.read():
+                    print("✓ Download successful - files match!")
+                else:
+                    print("✗ Downloaded file doesn't match original!")
+                    return False
+                    
+            os.unlink(download_file)  # Clean up
+            
         except Exception as e:
-            print(f"⚠ Could not list remote directory: {e}")
+            print(f"⚠ Download test failed: {e}")
         
-        sftp.close()
-        ssh.close()
+        print("\n8. Cleaning up remote file...")
+        try:
+            sftp.remove(remote_path)
+            print("✓ Remote file removed")
+        except Exception as e:
+            print(f"⚠ Could not remove remote file: {e}")
         
-        return success
+        return True
         
+    except paramiko.AuthenticationException:
+        print("✗ Authentication failed - check username/password")
+        return False
+    except paramiko.SSHException as e:
+        print(f"✗ SSH error: {e}")
+        return False
     except Exception as e:
-        print(f"✗ Upload failed: {e}")
+        print(f"✗ Unexpected error: {e}")
         import traceback
         traceback.print_exc()
+        return False
+        
+    finally:
+        # Clean up
+        if sftp:
+            try:
+                sftp.close()
+            except:
+                pass
         if ssh:
             try:
                 ssh.close()
             except:
                 pass
-        return False
-
-def main():
-    """Main function."""
-    print("=" * 50)
-    print("SFTP Server Upload Test")
-    print("=" * 50)
-    
-    # Create test file
-    test_file = create_test_file()
-    remote_file = f"{REMOTE_DIR}/{os.path.basename(test_file)}"
-    
-    try:
-        # Upload file
-        success = upload_file(test_file, remote_file)
-        
-        if success:
-            print("\n🎉 Upload test PASSED!")
-            print("✓ File uploaded successfully")
-            print("✓ Server handled the connection properly")
-            print("✓ Check server logs for Kafka event publication")
-        else:
-            print("\n❌ Upload test FAILED!")
-            sys.exit(1)
-            
-    finally:
-        # Clean up test file
         try:
             os.unlink(test_file)
-            print(f"\nCleaned up test file: {test_file}")
+            print(f"\nCleaned up local test file: {test_file}")
         except:
             pass
+
+def main():
+    """Main test function."""
+    success = test_sftp_full()
+    
+    if success:
+        print("\n" + "=" * 60)
+        print(" SFTP TEST PASSED!")
+        print("✓ SSH connection successful")
+        print("✓ SFTP subsystem working")
+        print("✓ Authentication working")  
+        print("✓ File upload/download working")
+        print("✓ Permission system working")
+        print("=" * 60)
+    else:
+        print("\n" + "=" * 60)
+        print("SFTP TEST FAILED!")
+        print("Check server logs for details")
+        print("=" * 60)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

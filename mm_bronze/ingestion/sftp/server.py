@@ -99,17 +99,20 @@ class ProductionServer(paramiko.ServerInterface):
 class ProductionSFTPServer(SFTPServerInterface):
     """SFTP server implementation with user-based access control and federated directories."""
 
-    def __init__(self, server, user_manager=None, event_loop=None, *args, **kwargs):
+    def __init__(self, server, *args, user_manager=None, event_loop=None, **kwargs):
         """Initializes the SFTP server with federated root directory and user-specific controls.
 
         Args:
             server: The parent server instance.
             user_manager (UserManager, optional): User manager for access control.
             event_loop (asyncio.AbstractEventLoop, optional): Event loop for async operations.
+            *args, **kwargs: Additional arguments passed to parent class
         """
+        # Call parent constructor with remaining args
         super().__init__(server, *args, **kwargs)
+        
         self.upload_root = os.getcwd()
-        self.user_manager = user_manager or kwargs.get("user_manager")
+        self.user_manager = user_manager
         self.current_user = getattr(server, "authenticated_user", None)
         self.event_loop = event_loop
 
