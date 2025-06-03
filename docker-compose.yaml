@@ -70,15 +70,6 @@ services:
     image: ingest_sftp:latest
     env_file:
       - .env
-    environment:
-      # SFTP server configuration
-      - SFTP_HOST=0.0.0.0
-      - SFTP_PORT=2222
-      - SFTP_UPLOAD_ROOT=/uploads
-      - SFTP_HOST_KEY_PATH=/app/keys/ssh_host_rsa_key
-      - SFTP_KEYS_DIR=/app/keys/users
-      # User configuration with new format
-      - SFTP_USERS=alice:secret:read+write+delete|readonly:readonly123:read
     ports:
       - "2222:2222"
     volumes:
