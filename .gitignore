@@ -26,3 +26,6 @@ client_keys
 .env
 .env_local
 env
+
+#claude
+CLAUDE.md

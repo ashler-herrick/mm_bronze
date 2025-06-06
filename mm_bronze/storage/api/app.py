@@ -9,7 +9,7 @@ from mm_bronze.common.kafka import (
 )
 from mm_bronze.common.config import settings
 from mm_bronze.common.log_config import configure_logging
-from mm_bronze.storage.api.api import process_message
+from mm_bronze.storage.api.processing import process_message
 
 configure_logging()
 logger = logging.getLogger(__name__)
