@@ -107,12 +107,13 @@ async def store_metadata(event: Dict[str, str], fingerprint: bytes, path: str) -
             try:
                 await conn.execute(
                     """
-                    INSERT INTO ingestion.raw_api_ingest
-                        (object_id, format, content_type, subtype,
+                    INSERT INTO ingestion.raw_ingestion
+                        (object_id, ingestion_source, format, content_type, subtype,
                          data_version, storage_path, fingerprint)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,
                     uid,
+                    "api",
                     event["format"],
                     event["content_type"],
                     event["subtype"],
