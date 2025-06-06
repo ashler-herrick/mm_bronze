@@ -29,12 +29,12 @@ def handle_client(
 
         def sftp_factory(ssh_server, *largs, **kwargs):
             """Factory function for creating SFTP server instances.
-            
+
             Args:
                 ssh_server: The SSH server instance (ProductionServer)
                 *largs, **kwargs: Additional arguments
             """
-            
+
             try:
                 sftp_server = ProductionSFTPServer(
                     ssh_server,
@@ -48,13 +48,14 @@ def handle_client(
             except Exception as e:
                 logger.error(f"Failed to create ProductionSFTPServer: {e}")
                 import traceback
+
                 traceback.print_exc()
                 raise
 
         # Register the SFTP subsystem
         logger.info("Registering SFTP subsystem handler")
         transport.set_subsystem_handler("sftp", SFTPServer, sftp_si=sftp_factory)
-        
+
         # Start the server
         logger.info("Starting SSH server")
         transport.start_server(server=server)
@@ -66,7 +67,9 @@ def handle_client(
             logger.warning("No channel established within timeout")
             return
 
-        logger.info(f"Channel established! Authenticated user: {server.authenticated_user}")
+        logger.info(
+            f"Channel established! Authenticated user: {server.authenticated_user}"
+        )
 
         # Keep connection alive
         try:
@@ -78,14 +81,9 @@ def handle_client(
     except Exception as e:
         logger.error(f"Error handling client: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         logger.info("Cleaning up client connection")
-        try:
-            transport.close()
-        except:
-            pass
-        try:
-            client.close()
-        except:
-            pass
+        transport.close()
+        client.close()

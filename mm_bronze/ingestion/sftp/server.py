@@ -110,7 +110,7 @@ class ProductionSFTPServer(SFTPServerInterface):
         """
         # Call parent constructor with remaining args
         super().__init__(server, *args, **kwargs)
-        
+
         self.upload_root = os.getcwd()
         self.user_manager = user_manager
         self.current_user = getattr(server, "authenticated_user", None)
