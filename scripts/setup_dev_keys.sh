@@ -48,7 +48,7 @@ else
 fi
 
 # Generate client keys and copy to server
-users=("alice" "readonly")
+users=("alice")
 
 for user in "${users[@]}"; do
     client_key="$CLIENT_KEYS_DIR/${user}_key"
@@ -87,7 +87,7 @@ log_success "Development environment setup complete!"
 echo
 echo "Next steps:"
 echo "1. Update your .env with:"
-echo "   SFTP_USERS=alice:secret:read+write+delete|readonly:readonly123:read"
+echo "   SFTP_USERS=alice:secret:read+write+delete"
 echo "2. Run: docker-compose up -d ingest_sftp"
 echo "3. Test password auth: sftp -P 2222 alice@localhost"
 echo "4. Test key auth: sftp -P 2222 -i client_keys/alice_key alice@localhost"
