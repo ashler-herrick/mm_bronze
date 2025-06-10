@@ -54,12 +54,17 @@ Data Flow:
    uv sync
    ```
 
-3. **Set up test SFTP keys**
+3. Create a .env file from the example.env
+   ```bash
+   cp example.env .env
+   ```
+
+4. **Set up test SFTP keys (Optional)**
    ```bash
    ./scripts/setup_dev_keys.sh
    ```
 
-4. **Start the platform** 
+5. **Start the platform** 
    ```bash
    docker-compose up --build -d
    ```
@@ -69,7 +74,7 @@ That's it! The platform will start with:
 - SFTP server at `localhost:2222` 
 - All supporting services (Kafka, PostgreSQL)
 
-**Note:** The repository includes a development `.env` file with safe localhost configuration. For local customization, create a `.env.local` file to override specific values.
+**Note:** The repository includes a development `.env` file with safe localhost configuration. For local customization, create a `.env` file to override specific values.
 
 ### Basic Usage
 
@@ -138,7 +143,7 @@ SFTP_USERS=alice:secret:read+write+delete
 RAW_STORAGE_URL=file:///path/to/test/storage
 ```
 
-For local customization, create a `.env.local` file to override specific values without affecting the shared development configuration.
+For local customization, create a `.env` file to override specific values without affecting the shared development configuration.
 You will need to update references
 ## Database Schema
 
