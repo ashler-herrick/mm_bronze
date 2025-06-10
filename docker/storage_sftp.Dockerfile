@@ -21,4 +21,4 @@ RUN uv pip install .
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["python", "-m", "mm_bronze.storage.sftp.app"]
+CMD ["uv", "run", "python", "-m", "mm_bronze.storage.sftp.app"]

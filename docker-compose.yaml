@@ -26,6 +26,9 @@ services:
       - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
       - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
       - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+      # Set message size limits (10MB) for healthcare data
+      - KAFKA_CFG_MESSAGE_MAX_BYTES=${KAFKA_MAX_MESSAGE_SIZE:-10485760}
+      - KAFKA_CFG_REPLICA_FETCH_MAX_BYTES=${KAFKA_MAX_MESSAGE_SIZE:-10485760}
     ports:
       - "9092:9092"
     volumes:
@@ -54,6 +57,8 @@ services:
       - .env
     ports:
       - "8000:8000"
+    depends_on:
+      - kafka
 
   storage_api:
     build:
@@ -62,6 +67,8 @@ services:
     image: storage_api:latest
     env_file:
       - .env
+    depends_on:
+      - kafka
 
   ingest_sftp:
     build:
@@ -78,6 +85,20 @@ services:
       # Mount SSH keys directory - Split into read-only users and writable host keys
       - ./keys/users:/app/keys/users:ro  # User public keys (read-only)
       - sftp_host_keys:/app/keys         # Host keys (writable volume)
+    depends_on:
+      - kafka
+      - postgres
+
+  storage_sftp:
+    build:
+      context: .
+      dockerfile: docker/storage_sftp.Dockerfile 
+    image: storage_sftp:latest
+    env_file:
+      - .env
+    volumes:
+      # Mount SFTP uploads directory to access uploaded files
+      - sftp_uploads:/uploads
     depends_on:
       - kafka
       - postgres
