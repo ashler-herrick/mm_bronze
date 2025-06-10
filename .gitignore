@@ -22,8 +22,7 @@ ssh_host*
 keys
 client_keys
 
-
-#Local env
+#env
 .env
 
 #claude
