@@ -22,10 +22,9 @@ ssh_host*
 keys
 client_keys
 
-#dotenv
-.env
-.env_local
-env
+
+# Local environment overrides
+.env.local
 
 #claude
 CLAUDE.md

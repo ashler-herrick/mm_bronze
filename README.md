@@ -39,15 +39,14 @@ Data Flow:
 
 ### Prerequisites
 
-- Python 3.11+
 - Docker and Docker Compose
-- uv package manager
+- Python 3.11+ and uv package manager (optional, for development/testing)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone git@github.com:ashler-herrick/mm_bronze.git
    cd mm_bronze
    ```
 
@@ -55,16 +54,30 @@ Data Flow:
    ```bash
    uv sync
    ```
+   
+3. **Start the platform** 
+   ```bash
+   docker-compose up
+   ```
 
-3. **Set up development SSH keys**
+That's it! The platform will start with:
+- REST API at `http://localhost:8000`
+- SFTP server at `localhost:2222` 
+- All supporting services (Kafka, PostgreSQL)
+
+**Optional setup for development:**
+
+3. **Install Python dependencies** (for running tests or scripts)
+   ```bash
+   uv sync
+   ```
+
+4. **Set up SFTP keys** (for SSH key-based authentication)
    ```bash
    ./scripts/setup_dev_keys.sh
    ```
 
-4. **Start services**
-   ```bash
-   docker-compose up
-   ```
+**Note:** The repository includes a development `.env` file with safe localhost configuration. For local customization, create a `.env.local` file to override specific values.
 
 ### Basic Usage
 
@@ -77,7 +90,12 @@ curl -X POST "http://localhost:8000/ingest/fhir/json/R4/bundle" \
 
 **SFTP Upload:**
 ```bash
+# Using password authentication (user: alice, password: secret)
 sftp -P 2222 alice@localhost
+
+# Or using SSH keys (after running setup_dev_keys.sh)
+sftp -P 2222 -i client_keys/alice_key alice@localhost
+
 # Upload files to trigger automatic processing
 ```
 
@@ -111,30 +129,24 @@ Background Kafka consumers that persist data to configured storage backends:
 
 ### Environment Variables
 
-Create a `.env` file with the following configuration:
+The repository includes a development `.env` file with safe localhost configuration. Key settings include:
 
 ```env
-# Database Configuration
-POSTGRES_DB=metadata
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-
-# Kafka Configuration
-KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-KAFKA_COMPRESSION_TYPE=none  # Optimized for performance
+# Kafka Configuration (optimized for performance)
+KAFKA_COMPRESSION_TYPE=none
 KAFKA_MAX_MESSAGE_SIZE=10485760  # 10MB
 
-# Storage Configuration
-STORAGE_BACKEND=local
-STORAGE_PATH=/app/data
+# Database (points to Docker container)
+POSTGRES_DSN=postgres://meta_user:meta_pass@postgres:5432/metadata
 
-# SFTP Configuration
-SFTP_HOST_KEY_PATH=/app/sftp_host_keys
-SFTP_USER_KEY_PATH=/app/keys/users
-SFTP_USERS=alice:secret:read+write
+# SFTP (test credentials for development)
+SFTP_USERS=alice:secret:read+write+delete
+
+# Storage (local filesystem for development)
+RAW_STORAGE_URL=file:///path/to/test/data
 ```
+
+For local customization, create a `.env.local` file to override specific values without affecting the shared development configuration.
 
 ### Performance Optimization
 
@@ -179,13 +191,17 @@ uv run pytest tests/integration/
 ### Development Workflow
 
 ```bash
-# IMPORTANT: After making code changes, restart with fresh volumes
+# After making code changes, restart with fresh volumes and rebuild
 docker-compose down -v
 docker-compose up --build
 
-# For quick iteration without rebuilding
+# For quick restart without rebuilding (no code changes)
 docker-compose down -v
-docker-compose up -d
+docker-compose up
+
+# View logs from specific services
+docker-compose logs -f ingest_api
+docker-compose logs -f storage_api
 ```
 
 ### Individual Service Development
@@ -280,8 +296,10 @@ The platform includes several consolidated utility scripts:
 
 - **Host**: localhost
 - **Port**: 2222
-- **Authentication**: SSH key-based or password (user: alice, password: secret)
-- **Upload Directory**: `/upload`
+- **Authentication**: 
+  - Password: user `alice`, password `secret`
+  - SSH key: `client_keys/alice_key` (after running `./scripts/setup_dev_keys.sh`)
+- **Upload Directory**: Root directory (files uploaded here are automatically processed)
 - **Supported Formats**: Any file format (processed based on extension/content)
 
 ## Supported Data Formats
@@ -300,23 +318,6 @@ Configured via fsspec, supporting:
 - **Azure Blob Storage**: Enterprise cloud storage
 - **Google Cloud Storage**: Multi-cloud support
 - **Custom Backends**: Any fsspec-compatible storage
-
-## Monitoring & Observability
-
-### Kafka Monitoring
-
-Monitor Kafka topics and consumer lag:
-```bash
-docker-compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
-```
-
-### Database Monitoring
-
-Check ingestion statistics:
-```sql
-SELECT ingestion_source, COUNT(*) FROM ingestion.raw_ingestion 
-GROUP BY ingestion_source;
-```
 
 ### Log Monitoring
 
@@ -358,3 +359,23 @@ docker-compose logs -f storage_api
    - Use appropriate storage backend for your use case
    - Consider data partitioning strategies
    - Monitor disk I/O and network bandwidth
+
+## Contributing
+
+When contributing to the platform:
+
+1. **Development Setup**: 
+   ```bash
+   git clone git@github.com:ashler-herrick/mm_bronze.git
+   cd mm_bronze
+   uv sync            
+   docker-compose up  # Start the platform
+   ```
+
+2. **Code Quality**: Run `ruff check` and `ruff format` before committing
+
+3. **Testing**: Ensure all tests pass with `uv run pytest`
+
+4. **Documentation**: Update relevant documentation for new features
+
+5. **Development Workflow**: Use `docker-compose down -v && docker-compose up --build` after code changes
