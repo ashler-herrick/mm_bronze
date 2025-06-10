@@ -79,13 +79,6 @@ Random data: {os.urandom(8).hex()}
         assert local_size == remote_stat.st_size, "File size mismatch"
         print("✓ File sizes match")
 
-        # Clean up remote file
-        try:
-            sftp.remove(remote_path)
-            print("✓ Remote file cleaned up")
-        except Exception:
-            print("⚠ Could not clean up remote file")
-
         sftp.close()
         ssh.close()
 
