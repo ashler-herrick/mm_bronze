@@ -21,7 +21,42 @@ packages = ["mm_bronze"]
 
 [dependency-groups]
 dev = [
+    "lz4>=4.4.4",
+    "psutil>=7.0.0",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",
+    "python-snappy>=0.7.3",
     "requests>=2.32.3",
+    "zstandard>=0.23.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::RuntimeWarning"
+]
+markers = [
+    "asyncio: mark test as an async test",
+    "integration: mark test as integration test (requires services)",
+    "unit: mark test as unit test (no external dependencies)"
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
 ]
