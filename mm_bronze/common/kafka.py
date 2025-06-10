@@ -21,9 +21,7 @@ def get_async_consumer(group: str) -> AIOKafkaConsumer:
     """
     _async_consumer = _async_consumers.get(group)
     if not _async_consumer:
-        raise RuntimeError(
-            f"Async consumer not initialized for group {group}; call init_async_consumer(group)"
-        )
+        raise RuntimeError(f"Async consumer not initialized for group {group}; call init_async_consumer(group)")
     return _async_consumer
 
 
@@ -48,6 +46,7 @@ async def init_async_consumer(
         group_id=group,
         auto_offset_reset="earliest",
         enable_auto_commit=False,
+        fetch_max_bytes=settings.kafka_max_message_size,
     )
 
     for attempt in range(1, max_retries + 1):
@@ -107,11 +106,18 @@ async def init_async_producer(
     if _async_producer is not None:
         return
 
+    # Handle "none" compression type for AIOKafkaProducer
+    compression_type = None if settings.kafka_compression_type == "none" else settings.kafka_compression_type
+
     _async_producer = AIOKafkaProducer(
         bootstrap_servers=settings.kafka_servers.split(","),
         value_serializer=lambda v: v,  # expect bytes
+        max_request_size=settings.kafka_max_message_size,
+        compression_type=compression_type,
     )
     logger.info(f"Kafka servers: {settings.kafka_servers.split(',')}")
+    logger.info(f"Kafka compression: {settings.kafka_compression_type}")
+    logger.info(f"Kafka max message size: {settings.kafka_max_message_size / (1024 * 1024):.1f} MB")
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -140,7 +146,3 @@ async def close_async_producer() -> None:
     if _async_producer is not None:
         await _async_producer.stop()
         _async_producer = None
-
-
-def _get_avail_consumer_groups():
-    return _async_consumers.keys()

@@ -67,9 +67,7 @@ def handle_client(
             logger.warning("No channel established within timeout")
             return
 
-        logger.info(
-            f"Channel established! Authenticated user: {server.authenticated_user}"
-        )
+        logger.info(f"Channel established! Authenticated user: {server.authenticated_user}")
 
         # Keep connection alive
         try:

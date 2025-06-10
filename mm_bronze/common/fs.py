@@ -52,7 +52,8 @@ class AsyncFS:
         Args:
             storage_url (Optional[str]): URL to the base storage location (e.g., "s3://bucket/path").
                 If None, defaults to `settings.raw_storage_url`.
-            compression (Compression): Compression type to apply when writing files. Defaults to GZIP.
+            compression (Compression): Compression type to apply when writing files.
+                Defaults to GZIP.
 
         Raises:
             ValueError: If the storage URL cannot be parsed by `fsspec.url_to_fs`.
@@ -80,13 +81,16 @@ class AsyncFS:
         mkdirs: bool = True,
     ) -> None:
         """
-        Write a serialized object to the given path, optionally compressing and creating directories.
+        Write a serialized object to the given path, optionally compressing and creating
+        directories.
 
         Args:
-            path (str): Destination path to write to. Relative paths are resolved against the base path.
+            path (str): Destination path to write to. Relative paths are resolved against
+                the base path.
             obj (Any): The object to serialize and write.
             serializer (Callable[[Any], bytes]): Function that serializes the object into bytes.
-            mkdirs (bool, optional): Whether to create parent directories if they don't exist. Defaults to False.
+            mkdirs (bool, optional): Whether to create parent directories if they don't
+                exist. Defaults to False.
 
         Raises:
             TypeError: If the serializer does not return bytes.
@@ -124,7 +128,8 @@ class AsyncFS:
 
         Args:
             path (str): Path to the file to read. Relative paths are resolved against the base path.
-            deserializer (Callable[[bytes], Any]): Function that deserializes the bytes into an object.
+            deserializer (Callable[[bytes], Any]): Function that deserializes the bytes
+                into an object.
             compression (str, optional): Compression mode. Defaults to "infer".
 
         Returns:
@@ -218,46 +223,6 @@ class AsyncFS:
             bytes: Raw byte content.
         """
         return await self.read(path, lambda o: o)
-
-
-class SyncFS:
-    """
-    Synchronous wrapper around any fsspec-backed filesystem. Mirrors AsyncFileSystem API.
-    """
-
-    def __init__(self, storage_url: Optional[str] = None):
-        url = storage_url or settings.raw_storage_url
-        fs, root = url_to_fs(url, anon=False)
-        self._fs: AbstractFileSystem = fs
-        self._root: str = root.rstrip("/")
-
-    @property
-    def base_path(self) -> str:
-        return self._root
-
-    # Core generic API
-    def write(self, path: str, obj: Any, serializer: Callable[[Any], bytes]) -> None:
-        data = serializer(obj)
-        if not isinstance(data, (bytes, bytearray)):
-            raise TypeError("serializer must return bytes")
-        full = f"{self._root}/{path.lstrip('/')}"
-        with self._fs.open(full, "wb") as f:
-            f.write(data)
-
-    def read(self, path: str, deserializer: Callable[[bytes], Any]) -> Any:
-        full = f"{self._root}/{path.lstrip('/')}"
-        with self._fs.open(full, "rb") as f:
-            data = f.read()
-        return deserializer(data)
-
-    def copy(self, source_path: str, dest_path: str, **kwargs) -> None:
-        """
-        Copy a file from source_path to dest_path within the same or different filesystem.
-        Paths are relative to the base root. Additional kwargs are passed to fsspec's copy.
-        """
-        src_full = f"{self._root}/{source_path.lstrip('/')}"
-        dst_full = f"{self._root}/{dest_path.lstrip('/')}"
-        self._fs.copy(src_full, dst_full, **kwargs)
 
 
 def _is_relative(path: str) -> bool:

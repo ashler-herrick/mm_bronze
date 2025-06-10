@@ -14,24 +14,45 @@ class Settings(BaseSettings):
     # — Kafka —
     kafka_servers: str = Field(..., description="Comma-separated bootstrap servers")
 
-    kafka_bronze_api_topic: str = Field(
-        ..., description="Topic for raw ingestion from the API"
-    )
+    kafka_bronze_api_topic: str = Field(..., description="Topic for raw ingestion from the API")
 
-    kafka_bronze_api_group: str = Field(
-        ..., description="Consumer group for ingestion from the API"
-    )
+    kafka_bronze_api_group: str = Field(..., description="Consumer group for ingestion from the API")
 
     kafka_bronze_sftp_topic: str = Field(
         ..., description="Topic for notifying that data has been ingested through SFTP"
     )
 
-    kafka_bronze_sftp_group: str = Field(
-        ..., description="Consumer group for handling SFTP files"
+    kafka_bronze_sftp_group: str = Field(..., description="Consumer group for handling SFTP files")
+
+    kafka_cfg_advertised_listeners: str = Field(..., description="Kafka advertised listeners configuration")
+
+    kafka_max_message_size: int = Field(
+        default=10485760,  # 10MB default
+        description="Maximum Kafka message size in bytes",
     )
 
-    kafka_cfg_advertised_listeners: str = Field(
-        ..., description="Kafka advertised listeners configuration"
+    kafka_compression_type: str = Field(
+        default="none",
+        description="Kafka producer compression type (none, gzip, snappy, lz4, zstd)",
+    )
+
+    @field_validator("kafka_compression_type")
+    def validate_kafka_compression_type(cls, v):
+        """Validate Kafka compression type."""
+        valid_types = {"none", "gzip", "snappy", "lz4", "zstd"}
+        if v not in valid_types:
+            raise ValueError(f"Invalid compression type '{v}'. Valid options: {valid_types}")
+        return v
+
+    # — File Size Limits —
+    api_max_file_size: int = Field(
+        default=104857600,  # 100MB default
+        description="Maximum file size for API uploads in bytes",
+    )
+
+    sftp_max_file_size: int = Field(
+        default=1073741824,  # 1GB default
+        description="Maximum file size for SFTP uploads in bytes",
     )
 
     # — Postgres —
@@ -61,13 +82,9 @@ class Settings(BaseSettings):
 
     sftp_port: int = Field(default=2222, description="SFTP server port", ge=1, le=65535)
 
-    sftp_upload_root: str = Field(
-        default="/uploads", description="SFTP upload root directory"
-    )
+    sftp_upload_root: str = Field(default="/uploads", description="SFTP upload root directory")
 
-    sftp_host_key_path: str = Field(
-        default="/app/keys/ssh_host_rsa_key", description="Path to SSH host private key"
-    )
+    sftp_host_key_path: str = Field(default="/app/keys/ssh_host_rsa_key", description="Path to SSH host private key")
 
     sftp_keys_dir: str = Field(
         default="/app/keys/users",
@@ -76,7 +93,7 @@ class Settings(BaseSettings):
 
     sftp_users: str = Field(
         default="alice:secret:read+write",
-        description="SFTP users configuration. Format: user1:pass1:perm1+perm2|user2:pass2:perm1+perm2",
+        description=("SFTP users configuration. Format: user1:pass1:perm1+perm2|user2:pass2:perm1+perm2"),
     )
 
     # Pydantic V2 configuration
@@ -91,6 +108,10 @@ class Settings(BaseSettings):
             "kafka_bronze_sftp_topic": "KAFKA_BRONZE_SFTP_TOPIC",
             "kafka_bronze_sftp_group": "KAFKA_BRONZE_SFTP_GROUP",
             "kafka_cfg_advertised_listeners": "KAFKA_CFG_ADVERTISED_LISTENERS",
+            "kafka_max_message_size": "KAFKA_MAX_MESSAGE_SIZE",
+            "kafka_compression_type": "KAFKA_COMPRESSION_TYPE",
+            "api_max_file_size": "API_MAX_FILE_SIZE",
+            "sftp_max_file_size": "SFTP_MAX_FILE_SIZE",
             "postgres_dsn": "POSTGRES_DSN",
             "raw_storage_url": "RAW_STORAGE_URL",
             "db_min_size": "DB_MIN_SIZE",
@@ -156,8 +177,7 @@ class Settings(BaseSettings):
                     perm = perm.strip()
                     if perm not in valid_permissions:
                         raise ValueError(
-                            f"Invalid permission '{perm}' for user {username}. "
-                            f"Valid permissions: {valid_permissions}"
+                            f"Invalid permission '{perm}' for user {username}. Valid permissions: {valid_permissions}"
                         )
                     permissions.add(perm)
             else:

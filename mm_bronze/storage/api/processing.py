@@ -64,9 +64,7 @@ def compute_fingerprint(data: bytes) -> bytes:
     return hasher.digest()
 
 
-def build_path_by_fp(
-    event: Dict[str, str], fp_hex: str, base_prefix: str = "bronze"
-) -> str:
+def build_path_by_fp(event: Dict[str, str], fp_hex: str, base_prefix: str = "bronze") -> str:
     """
     Construct a storage path using event metadata and fingerprint.
 
@@ -103,14 +101,26 @@ async def store_metadata(event: Dict[str, str], fingerprint: bytes, path: str) -
     uid = event.get("uuid")
     pool = await get_pool()
     async with pool.acquire() as conn:
-        async with conn.transaction():
-            try:
+        try:
+            async with conn.transaction():
+                # Create source metadata for API ingestion
+                source_metadata = {
+                    "ingestion_method": "api",
+                    "endpoint": (
+                        f"/ingest/{event['format']}/{event['content_type']}/{event['version']}/{event['subtype']}"
+                    ),
+                    "format": event["format"],
+                    "content_type": event["content_type"],
+                    "subtype": event["subtype"],
+                    "version": event["version"],
+                }
+
                 await conn.execute(
                     """
                     INSERT INTO ingestion.raw_ingestion
                         (object_id, ingestion_source, format, content_type, subtype,
-                         data_version, storage_path, fingerprint)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                         data_version, storage_path, fingerprint, source_metadata)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,
                     uid,
                     "api",
@@ -120,12 +130,15 @@ async def store_metadata(event: Dict[str, str], fingerprint: bytes, path: str) -
                     event["version"],
                     path,
                     fingerprint,
+                    orjson.dumps(source_metadata).decode("utf-8"),
                 )
                 status = "ingested"
-            except UniqueViolationError:
-                status = "duplicate"
-                logger.warning("Duplicate fingerprint for %s", uid)
+        except UniqueViolationError:
+            status = "duplicate"
+            logger.warning("Duplicate fingerprint for %s", uid)
 
+        # Log status in separate transaction to avoid rollback issues
+        async with conn.transaction():
             await conn.execute(
                 "INSERT INTO ingestion.ingestion_log(object_id, status) VALUES ($1, $2)",
                 uid,

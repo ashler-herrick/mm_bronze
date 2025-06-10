@@ -34,6 +34,7 @@ class ProductionSFTPHandle(SFTPHandle):
         self.writefile = None
         self.username = username
         self.event_loop = event_loop
+        self.bytes_written = 0  # Track total bytes written for size validation
 
     def close(self) -> int:
         """Closes the file handle and publishes an upload event if it was a write operation.
@@ -48,14 +49,10 @@ class ProductionSFTPHandle(SFTPHandle):
         if self.writefile is not None:
             self.writefile.close()
             if self.filename:
-                logger.info(
-                    f"File upload completed by {self.username}: {self.filename}"
-                )
+                logger.info(f"File upload completed by {self.username}: {self.filename}")
                 # Publish Kafka event for upload completion
                 if self.event_loop:
-                    asyncio.run_coroutine_threadsafe(
-                        self._publish_upload_event(), self.event_loop
-                    )
+                    asyncio.run_coroutine_threadsafe(self._publish_upload_event(), self.event_loop)
             self.writefile = None
         return paramiko.SFTP_OK
 
@@ -71,9 +68,7 @@ class ProductionSFTPHandle(SFTPHandle):
             payload = {
                 "path": self.filename,
                 "timestamp": time.time(),
-                "size": os.path.getsize(self.filename)
-                if os.path.exists(self.filename)
-                else 0,
+                "size": os.path.getsize(self.filename) if os.path.exists(self.filename) else 0,
                 "event_type": "sftp_upload_complete",
                 "username": self.username,
                 "source": "sftp_server",
@@ -81,9 +76,7 @@ class ProductionSFTPHandle(SFTPHandle):
 
             topic = settings.kafka_bronze_sftp_topic
             await producer.send_and_wait(topic, orjson.dumps(payload))
-            logger.info(
-                f"Published upload event to {topic} for {self.filename} by user {self.username}"
-            )
+            logger.info(f"Published upload event to {topic} for {self.filename} by user {self.username}")
 
         except Exception as e:
             logger.error(f"Failed to publish upload event for {self.filename}: {e}")
@@ -107,7 +100,7 @@ class ProductionSFTPHandle(SFTPHandle):
             return paramiko.SFTP_FAILURE
 
     def write(self, offset: int, data: bytes) -> int:
-        """Writes data to the file at the given offset.
+        """Writes data to the file at the given offset with size validation.
 
         Args:
             offset (int): Byte offset to start writing at.
@@ -118,11 +111,30 @@ class ProductionSFTPHandle(SFTPHandle):
         """
         if self.writefile is None:
             return paramiko.SFTP_FAILURE
+
+        # Check if this write would exceed the SFTP file size limit
         try:
+            current_size = self.writefile.tell()
+            projected_size = max(current_size, offset + len(data))
+
+            if projected_size > settings.sftp_max_file_size:
+                size_mb = projected_size / (1024 * 1024)
+                limit_mb = settings.sftp_max_file_size / (1024 * 1024)
+                logger.warning(
+                    f"SFTP upload size limit exceeded by {self.username}: "
+                    f"{size_mb:.1f}MB > {limit_mb:.1f}MB for file {self.filename}"
+                )
+                return paramiko.SFTP_FAILURE
+
             self.writefile.seek(offset)
             self.writefile.write(data)
             self.writefile.flush()
-        except OSError:
+
+            # Update bytes written counter
+            self.bytes_written = max(self.bytes_written, offset + len(data))
+
+        except OSError as e:
+            logger.error(f"SFTP write error for {self.filename}: {e}")
             return paramiko.SFTP_FAILURE
         return paramiko.SFTP_OK
 
@@ -134,13 +146,9 @@ class ProductionSFTPHandle(SFTPHandle):
         """
         try:
             if self.writefile:
-                return paramiko.SFTPAttributes.from_stat(
-                    os.fstat(self.writefile.fileno())
-                )
+                return paramiko.SFTPAttributes.from_stat(os.fstat(self.writefile.fileno()))
             elif self.readfile:
-                return paramiko.SFTPAttributes.from_stat(
-                    os.fstat(self.readfile.fileno())
-                )
+                return paramiko.SFTPAttributes.from_stat(os.fstat(self.readfile.fileno()))
             else:
                 return paramiko.SFTPAttributes()
         except OSError:

@@ -41,9 +41,7 @@ async def process_sftp_message(
     username = envelope.get("username", "unknown")
     size = envelope.get("size", 0)
 
-    logger.info(
-        f"Processing SFTP file: {file_path} (size: {size}) uploaded by {username}"
-    )
+    logger.info(f"Processing SFTP file: {file_path} (size: {size}) uploaded by {username}")
 
     try:
         # Read file contents
@@ -67,10 +65,14 @@ async def process_sftp_message(
         )
 
         # Write to storage
-        await write_to_storage(fs, path, payload_bytes, file_uuid)
+        storage_success = await write_to_storage(fs, path, payload_bytes, file_uuid)
 
-        # Optionally clean up original file after successful processing
-        await cleanup_uploaded_file(file_path, file_uuid)
+        # Only clean up original file if storage was successful
+        if storage_success:
+            await cleanup_uploaded_file(file_path, file_uuid)
+        else:
+            logger.warning(f"Storage failed for {file_path}, preserving original file")
+            await log_ingestion(file_uuid, "storage_failed", f"Preserving original file: {file_path}")
 
     except Exception as e:
         logger.exception(f"Failed to process SFTP file {file_path}")
@@ -88,7 +90,13 @@ async def read_uploaded_file(file_path: str) -> bytes:
     Returns:
         File contents as bytes
     """
+    import os
+
     try:
+        if not os.path.exists(file_path):
+            logger.warning(f"File {file_path} does not exist, may have been cleaned up already")
+            raise FileNotFoundError(f"File {file_path} not found")
+
         with open(file_path, "rb") as f:
             return f.read()
     except Exception as e:
@@ -111,9 +119,7 @@ def compute_fingerprint(data: bytes) -> bytes:
     return hasher.digest()
 
 
-def build_path_for_sftp_file(
-    original_path: str, fp_hex: str, username: str, base_prefix: str = "bronze"
-) -> str:
+def build_path_for_sftp_file(original_path: str, fp_hex: str, username: str, base_prefix: str = "bronze") -> str:
     """
     Construct a storage path for SFTP uploaded files.
 
@@ -163,36 +169,36 @@ async def store_sftp_metadata(
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        async with conn.transaction():
-            try:
-                # Determine file format and content type
-                path_obj = Path(original_path)
-                file_ext = path_obj.suffix.lstrip('.').lower()
-                
-                # Map file extensions to content types
-                content_type_map = {
-                    'json': 'json',
-                    'xml': 'xml', 
-                    'txt': 'text',
-                    'csv': 'text',
-                    'pdf': 'binary',
-                    'dcm': 'binary',
-                    'zip': 'binary'
-                }
-                content_type = content_type_map.get(file_ext, 'binary')
-                
-                # Use filename (without extension) as subtype for categorization
-                subtype = path_obj.stem or 'document'
-                
-                # Create source metadata with SFTP-specific information
-                source_metadata = {
-                    "username": username,
-                    "original_path": original_path,
-                    "original_filename": path_obj.name,
-                    "file_size": size,
-                    "upload_method": "sftp"
-                }
-                
+        # Determine file format and content type
+        path_obj = Path(original_path)
+        file_ext = path_obj.suffix.lstrip(".").lower()
+
+        # Map file extensions to content types
+        content_type_map = {
+            "json": "json",
+            "xml": "xml",
+            "txt": "text",
+            "csv": "text",
+            "pdf": "binary",
+            "dcm": "binary",
+            "zip": "binary",
+        }
+        content_type = content_type_map.get(file_ext, "binary")
+
+        # Use filename (without extension) as subtype for categorization
+        subtype = path_obj.stem or "document"
+
+        # Create source metadata with SFTP-specific information
+        source_metadata = {
+            "username": username,
+            "original_path": original_path,
+            "original_filename": path_obj.name,
+            "file_size": size,
+            "upload_method": "sftp",
+        }
+
+        try:
+            async with conn.transaction():
                 await conn.execute(
                     """
                     INSERT INTO ingestion.raw_ingestion
@@ -203,18 +209,20 @@ async def store_sftp_metadata(
                     file_uuid,
                     "sftp",
                     file_ext or "unknown",  # format is file extension
-                    content_type,           # content_type is data format
-                    subtype,               # subtype is filename/category
-                    "1.0",                 # data_version
+                    content_type,  # content_type is data format
+                    subtype,  # subtype is filename/category
+                    "1.0",  # data_version
                     storage_path,
                     fingerprint,
-                    orjson.dumps(source_metadata),  # source_metadata as JSONB
+                    orjson.dumps(source_metadata).decode("utf-8"),  # source_metadata as JSONB string
                 )
                 status = "ingested"
-            except UniqueViolationError:
-                status = "duplicate"
-                logger.warning("Duplicate fingerprint for SFTP file %s", file_uuid)
+        except UniqueViolationError:
+            status = "duplicate"
+            logger.warning("Duplicate fingerprint for SFTP file %s", file_uuid)
 
+        # Log status in separate transaction to avoid rollback issues
+        async with conn.transaction():
             await conn.execute(
                 """
                 INSERT INTO ingestion.ingestion_log(object_id, status, message) 
@@ -248,7 +256,7 @@ async def log_ingestion(object_id: str, status: str, message: Optional[str]) -> 
         )
 
 
-async def write_to_storage(fs: AsyncFS, path: str, data: bytes, uid: str) -> None:
+async def write_to_storage(fs: AsyncFS, path: str, data: bytes, uid: str) -> bool:
     """
     Write raw payload bytes to storage and log completion or failure.
 
@@ -257,14 +265,19 @@ async def write_to_storage(fs: AsyncFS, path: str, data: bytes, uid: str) -> Non
         path: Relative storage path.
         data: Raw bytes to write.
         uid: The unique identifier for logging purposes.
+
+    Returns:
+        bool: True if storage write was successful, False otherwise.
     """
     try:
         await fs.write_bytes(str(path), data)
         await log_ingestion(uid, "complete", None)
         logger.info(f"Successfully stored SFTP file to {path}")
+        return True
     except Exception as e:
         logger.exception("Failed to write payload for %s", uid)
         await log_ingestion(uid, "failed", str(e))
+        return False
 
 
 async def cleanup_uploaded_file(file_path: str, file_uuid: str) -> None:
@@ -279,9 +292,7 @@ async def cleanup_uploaded_file(file_path: str, file_uuid: str) -> None:
         if os.path.exists(file_path):
             os.remove(file_path)
             logger.info(f"Cleaned up uploaded file: {file_path}")
-            await log_ingestion(
-                file_uuid, "cleaned_up", f"Removed original file: {file_path}"
-            )
+            await log_ingestion(file_uuid, "cleaned_up", f"Removed original file: {file_path}")
     except Exception as e:
         logger.warning(f"Failed to clean up file {file_path}: {e}")
         await log_ingestion(file_uuid, "cleanup_failed", str(e))

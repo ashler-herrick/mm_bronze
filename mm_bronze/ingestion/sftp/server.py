@@ -120,9 +120,7 @@ class ProductionSFTPServer(SFTPServerInterface):
         if self.current_user:
             self.user_root = os.path.join(self.upload_root, self.current_user)
             os.makedirs(self.user_root, exist_ok=True)
-            logger.info(
-                f"SFTP server root for user {self.current_user}: {self.user_root}"
-            )
+            logger.info(f"SFTP server root for user {self.current_user}: {self.user_root}")
         else:
             self.user_root = self.upload_root
             logger.info(f"SFTP server root: {self.upload_root}")
@@ -147,9 +145,7 @@ class ProductionSFTPServer(SFTPServerInterface):
         try:
             Path(full_path).resolve().relative_to(Path(self.user_root).resolve())
         except ValueError:
-            logger.warning(
-                f"Path traversal attempt blocked: {path} by user {self.current_user}"
-            )
+            logger.warning(f"Path traversal attempt blocked: {path} by user {self.current_user}")
             raise paramiko.SFTPError(paramiko.SFTP_PERMISSION_DENIED, "Access denied")
 
         return full_path
@@ -269,9 +265,18 @@ class ProductionSFTPServer(SFTPServerInterface):
                 return paramiko.SFTP_PERMISSION_DENIED
 
         path = self._realpath(path)
-        logger.info(
-            f"User {self.current_user} opening file: {path} with flags: {flags}"
-        )
+
+        # Log file opening with size limit information for writes
+        if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT):
+            from mm_bronze.common.config import settings
+
+            limit_mb = settings.sftp_max_file_size / (1024 * 1024)
+            logger.info(
+                f"User {self.current_user} opening file for write: {path} with flags: {flags} "
+                f"(Size limit: {limit_mb:.0f}MB)"
+            )
+        else:
+            logger.info(f"User {self.current_user} opening file for read: {path} with flags: {flags}")
 
         try:
             binary_flag = getattr(os, "O_BINARY", 0)

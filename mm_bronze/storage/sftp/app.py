@@ -42,9 +42,13 @@ async def main():
                 "headers": {k: v for k, v in msg.headers},
             }
             logger.info(f"Got SFTP message {record_meta}")
-            await process_sftp_message(raw, fs)
-
-            await consumer.commit()
+            try:
+                await process_sftp_message(raw, fs)
+                await consumer.commit()
+            except Exception as e:
+                logger.error(f"Failed to process SFTP message: {e}")
+                # Continue processing other messages instead of crashing
+                await consumer.commit()  # Still commit to avoid reprocessing
     finally:
         await close_async_consumer(group)
 

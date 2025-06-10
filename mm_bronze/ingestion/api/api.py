@@ -38,7 +38,9 @@ async def ingest_entity(
     raw: bytes = Depends(get_raw_body),
     producer=Depends(get_async_producer),
 ):
-    logger.info(f"Received ingestion request at ingestion/{fmt}/{version}/{subtype}")
+    # Log request with size information
+    size_mb = len(raw) / (1024 * 1024)
+    logger.info(f"Received ingestion request at ingestion/{fmt}/{version}/{subtype} - Size: {size_mb:.2f}MB")
 
     # validate the payload valid json/xml/etc.
     await validate_payload(fmt, raw)

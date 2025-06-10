@@ -17,9 +17,7 @@ class UserManager:
 
     def __init__(self):
         """Initializes the UserManager by loading users and their SSH keys from the environment."""
-        self.users: Dict[
-            str, Dict
-        ] = {}  # username -> {'password': str, 'keys': [PKey], 'permissions': set}
+        self.users: Dict[str, Dict] = {}  # username -> {'password': str, 'keys': [PKey], 'permissions': set}
         self._load_users_from_env()
         self._load_ssh_keys()
 
@@ -45,9 +43,7 @@ class UserManager:
             if len(parts) >= 2:
                 username = parts[0].strip()
                 password = parts[1].strip()
-                permissions = (
-                    set(parts[2].split("+")) if len(parts) > 2 else {"read", "write"}
-                )
+                permissions = set(parts[2].split("+")) if len(parts) > 2 else {"read", "write"}
 
                 self.users[username] = {
                     "password": password,
@@ -66,9 +62,7 @@ class UserManager:
         keys_dir = Path(os.getenv("SFTP_KEYS_DIR", "/app/keys/users"))
 
         if not keys_dir.exists():
-            logger.info(
-                f"SSH keys directory {keys_dir} doesn't exist, skipping key loading"
-            )
+            logger.info(f"SSH keys directory {keys_dir} doesn't exist, skipping key loading")
             return
 
         for username in self.users:
@@ -91,15 +85,11 @@ class UserManager:
                         elif key_type.startswith("ecdsa-sha2"):
                             key = paramiko.ECDSAKey(data=key_blob)
                         else:
-                            logger.warning(
-                                f"Unsupported key type {key_type} for user {username}"
-                            )
+                            logger.warning(f"Unsupported key type {key_type} for user {username}")
                             continue
 
                         self.users[username]["keys"].append(key)
-                        logger.info(
-                            f"Loaded SSH key for user {username} (type: {key_type})"
-                        )
+                        logger.info(f"Loaded SSH key for user {username} (type: {key_type})")
 
                 except Exception as e:
                     logger.error(f"Failed to load SSH key for user {username}: {e}")
@@ -137,10 +127,7 @@ class UserManager:
             return False
 
         for user_key in user["keys"]:
-            if (
-                key.get_name() == user_key.get_name()
-                and key.asbytes() == user_key.asbytes()
-            ):
+            if key.get_name() == user_key.get_name() and key.asbytes() == user_key.asbytes():
                 logger.info(f"SSH key authentication successful for {username}")
                 return True
 
