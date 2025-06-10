@@ -1,13 +1,13 @@
 import logging
-import hashlib
 import base64
-from typing import Dict, Optional
+from typing import Dict
 
 import orjson
 from asyncpg import UniqueViolationError
 
 from mm_bronze.common.db import get_pool
 from mm_bronze.common.fs import AsyncFS
+from mm_bronze.storage.utils import compute_fingerprint, log_ingestion, write_to_storage
 
 logger = logging.getLogger(__name__)
 
@@ -49,19 +49,6 @@ async def process_message(
     await write_to_storage(fs, path, payload_bytes, uid)
 
 
-def compute_fingerprint(data: bytes) -> bytes:
-    """
-    Compute the SHA-256 hash of the given data.
-
-    Args:
-        data: Raw bytes to hash.
-
-    Returns:
-        The hash digest as raw bytes.
-    """
-    hasher = hashlib.sha256()
-    hasher.update(data)
-    return hasher.digest()
 
 
 def build_path_by_fp(event: Dict[str, str], fp_hex: str, base_prefix: str = "bronze") -> str:
@@ -146,41 +133,5 @@ async def store_metadata(event: Dict[str, str], fingerprint: bytes, path: str) -
             )
 
 
-async def log_ingestion(object_id: str, status: str, message: Optional[str]) -> None:
-    """
-    Log ingestion status and optional message to ingestion_log table.
-
-    Args:
-        object_id: The unique identifier of the ingested object.
-        status: One of 'started', 'ingested', 'complete', 'failed', etc.
-        message: Optional error or informational message.
-    """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO ingestion.ingestion_log(object_id, status, message)
-            VALUES ($1, $2, $3)
-            """,
-            object_id,
-            status,
-            message,
-        )
 
 
-async def write_to_storage(fs: AsyncFS, path: str, data: bytes, uid: str) -> None:
-    """
-    Write raw payload bytes to storage and log completion or failure.
-
-    Args:
-        fs: AsyncFS filesystem client.
-        path: Relative storage path (as returned by build_path_by_fp).
-        data: Raw bytes to write.
-        uid: The unique identifier for logging purposes.
-    """
-    try:
-        await fs.write_bytes(str(path), data)
-        await log_ingestion(uid, "complete", None)
-    except Exception as e:
-        logger.exception("Failed to write payload for %s", uid)
-        await log_ingestion(uid, "failed", str(e))
