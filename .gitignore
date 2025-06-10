@@ -23,8 +23,8 @@ keys
 client_keys
 
 
-# Local environment overrides
-.env.local
+#Local env
+.env
 
 #claude
 CLAUDE.md
