@@ -54,17 +54,21 @@ Data Flow:
    uv sync
    ```
 
-3. Create a .env file from the example.env
+3. **Create a .env file from the example.env**
    ```bash
    cp example.env .env
    ```
 
-4. **Set up test SFTP keys (Optional)**
+4. **Create a local directory for mounting the containers.**
+   ```bash
+   mkdir -p ./data/raw_storage
+   ```
+5. **Set up test SFTP keys (Optional)**
    ```bash
    ./scripts/setup_dev_keys.sh
    ```
 
-5. **Start the platform** 
+6. **Start the platform** 
    ```bash
    docker-compose up --build -d
    ```

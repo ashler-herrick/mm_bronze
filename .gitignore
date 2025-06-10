@@ -14,7 +14,7 @@ logs
 
 #test_data
 tests/test_data/
-
+data/
 
 #sftp 
 users.conf

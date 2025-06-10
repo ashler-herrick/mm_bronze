@@ -67,6 +67,9 @@ services:
     image: storage_api:latest
     env_file:
       - .env
+    volumes:
+      # Mount raw storage volume for persistent data storage
+      - raw_storage:/data/storage
     depends_on:
       - kafka
 
@@ -99,6 +102,8 @@ services:
     volumes:
       # Mount SFTP uploads directory to access uploaded files
       - sftp_uploads:/uploads
+      # Mount raw storage volume for persistent data storage
+      - raw_storage:/data/storage
     depends_on:
       - kafka
       - postgres
@@ -109,3 +114,10 @@ volumes:
   kafka_data:
   sftp_uploads:
   sftp_host_keys:
+  raw_storage:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: ./data/raw_storage  # Local directory path
+
