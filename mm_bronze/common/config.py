@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     # Pydantic V2 configuration
     model_config = ConfigDict(
         case_sensitive=False,  # env var names are case-insensitive
-        env_file=".env",
+        env_file=".env.local",
         env_file_encoding="utf-8",
         env_names={  # explicit mapping to environment variables
             "kafka_servers": "KAFKA_SERVERS",

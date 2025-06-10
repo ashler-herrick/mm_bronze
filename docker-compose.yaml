@@ -13,7 +13,7 @@ services:
     depends_on:
       - zookeeper
     env_file:
-      - .env
+      - .env.local
     environment:
       # Point at ZK
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
@@ -54,7 +54,7 @@ services:
       dockerfile: docker/ingest_api.Dockerfile 
     image: ingest_api:latest
     env_file:
-      - .env
+      - .env.local
     ports:
       - "8000:8000"
     depends_on:
@@ -66,7 +66,7 @@ services:
       dockerfile: docker/storage_api.Dockerfile 
     image: storage_api:latest
     env_file:
-      - .env
+      - .env.local
     depends_on:
       - kafka
 
@@ -76,7 +76,7 @@ services:
       dockerfile: docker/ingest_sftp.Dockerfile
     image: ingest_sftp:latest
     env_file:
-      - .env
+      - .env.local
     ports:
       - "2222:2222"
     volumes:
@@ -95,7 +95,7 @@ services:
       dockerfile: docker/storage_sftp.Dockerfile 
     image: storage_sftp:latest
     env_file:
-      - .env
+      - .env.local
     volumes:
       # Mount SFTP uploads directory to access uploaded files
       - sftp_uploads:/uploads

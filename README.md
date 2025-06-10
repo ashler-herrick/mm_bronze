@@ -1,6 +1,6 @@
 # mm_bronze
 
-A high-performance healthcare data ingestion platform designed for processing FHIR, HL7, and other healthcare data formats through REST API and SFTP interfaces.
+A healthcare data ingestion platform designed for processing FHIR, HL7, and other healthcare data formats through REST API and SFTP interfaces.
 
 ## Overview
 
@@ -10,7 +10,6 @@ mm_bronze is a microservices-based data ingestion platform that provides:
 - **Event-Driven Architecture**: Kafka-based messaging for reliable data processing
 - **Pluggable Storage**: Support for local filesystem, S3, and other storage backends
 - **Healthcare Focus**: Optimized for FHIR, HL7, and medical data formats
-- **High Performance**: Optimized Kafka configuration achieving 4.5M MB/s throughput
 - **Metadata Tracking**: PostgreSQL-based tracking with global deduplication
 
 ## Architecture
@@ -54,28 +53,21 @@ Data Flow:
    ```bash
    uv sync
    ```
-   
-3. **Start the platform** 
+
+3. **Set up test SFTP keys**
    ```bash
-   docker-compose up
+   ./scripts/setup_dev_keys.sh
+   ```
+
+4. **Start the platform** 
+   ```bash
+   docker-compose up --build -d
    ```
 
 That's it! The platform will start with:
 - REST API at `http://localhost:8000`
 - SFTP server at `localhost:2222` 
 - All supporting services (Kafka, PostgreSQL)
-
-**Optional setup for development:**
-
-3. **Install Python dependencies** (for running tests or scripts)
-   ```bash
-   uv sync
-   ```
-
-4. **Set up SFTP keys** (for SSH key-based authentication)
-   ```bash
-   ./scripts/setup_dev_keys.sh
-   ```
 
 **Note:** The repository includes a development `.env` file with safe localhost configuration. For local customization, create a `.env.local` file to override specific values.
 
@@ -107,14 +99,14 @@ FastAPI service providing REST endpoints for data ingestion:
 
 - **Endpoint**: `POST /ingest/{format}/{content_type}/{version}/{subtype}`
 - **Formats**: FHIR, HL7, custom healthcare formats
-- **Features**: Payload validation, UUID generation, Kafka publishing
+- **Features**: Payload validation, UUID generation, Kafka publishing, upload size limits
 
 ### SFTP Server (`localhost:2222`)
 
 Custom SFTP implementation with automatic file processing:
 
 - **Authentication**: SSH key-based user management
-- **Monitoring**: Real-time file upload detection
+- **Monitoring**: Real-time file upload detection, upload size limits
 - **Processing**: Automatic Kafka event publishing for uploaded files
 
 ### Storage Services
@@ -134,7 +126,7 @@ The repository includes a development `.env` file with safe localhost configurat
 ```env
 # Kafka Configuration (optimized for performance)
 KAFKA_COMPRESSION_TYPE=none
-KAFKA_MAX_MESSAGE_SIZE=10485760  # 10MB
+KAFKA_MAX_MESSAGE_SIZE=8388608  # 8MB
 
 # Database (points to Docker container)
 POSTGRES_DSN=postgres://meta_user:meta_pass@postgres:5432/metadata
@@ -143,23 +135,11 @@ POSTGRES_DSN=postgres://meta_user:meta_pass@postgres:5432/metadata
 SFTP_USERS=alice:secret:read+write+delete
 
 # Storage (local filesystem for development)
-RAW_STORAGE_URL=file:///path/to/test/data
+RAW_STORAGE_URL=file:///path/to/test/storage
 ```
 
 For local customization, create a `.env.local` file to override specific values without affecting the shared development configuration.
-
-### Performance Optimization
-
-Kafka compression is disabled for maximum throughput:
-- **Current Performance**: ~4.5 million MB/s
-- **Benchmark Results**: 393x improvement vs gzip compression
-- **Rationale**: Healthcare JSON data compression overhead exceeds benefits
-
-To enable compression (if needed):
-```env
-KAFKA_COMPRESSION_TYPE=zstd  # Best balance of compression and speed
-```
-
+You will need to update references
 ## Database Schema
 
 PostgreSQL database "metadata" with schema "ingestion":

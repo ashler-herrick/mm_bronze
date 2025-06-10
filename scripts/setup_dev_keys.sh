@@ -86,7 +86,7 @@ log_success "Development environment setup complete!"
 
 echo
 echo "Next steps:"
-echo "1. Update your .env with:"
+echo "1. Update your .env.local with:"
 echo "   SFTP_USERS=alice:secret:read+write+delete"
 echo "2. Run: docker-compose up -d ingest_sftp"
 echo "3. Test password auth: sftp -P 2222 alice@localhost"
