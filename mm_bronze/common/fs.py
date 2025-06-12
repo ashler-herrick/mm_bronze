@@ -9,6 +9,9 @@ from fsspec import url_to_fs, AbstractFileSystem
 
 from mm_bronze.common.config import settings
 
+CHUNK_SIZE = 1024 * 1024  # default chunk size of 1MB
+MAX_SIZE = 1024 * 1024 * 10  # default max size of 10MB for chunk file read
+
 
 class Compression(str, Enum):
     NONE = "none"
@@ -145,41 +148,6 @@ class AsyncFS:
         data = await self._run(_read, path)
         return deserializer(data)
 
-    # --- Copy across file systems ---
-    async def copy(self, source_path: str, dest_path: str) -> None:
-        """
-        Copy a file from source_path to dest_path. Supports cross-filesystem operations.
-
-        Args:
-            source_path (str): Source file path. Can be relative or full URL.
-            dest_path (str): Destination file path. Can be relative or full URL.
-        """
-        # resolve source filesystem and path
-        if _is_relative(source_path):
-            src_fs = self._fs
-            src = f"{self._root}/{source_path.lstrip('/')}"
-        else:
-            src_fs, src = url_to_fs(source_path, anon=False)
-        # resolve destination filesystem and path
-        if _is_relative(dest_path):
-            dst_fs = self._fs
-            dst = f"{self._root}/{dest_path.lstrip('/')}"
-        else:
-            dst_fs, dst = url_to_fs(dest_path, anon=False)
-        # ensure parent directory on destination
-        parent = dst.rsplit("/", 1)[0]
-        await self._run(dst_fs.makedirs, parent, exist_ok=True)
-
-        # perform streaming copy
-        def _stream_copy():
-            with src_fs.open(src, "rb") as fin, dst_fs.open(dst, "wb") as fout:
-                for chunk in iter(lambda: fin.read(1024 * 1024), b""):
-                    fout.write(chunk)
-
-        await self._run(_stream_copy)
-
-        # --- Convenience wrappers for reading and writing types ---
-
     async def write_json(self, path: str, obj: dict, mkdirs: bool = True):
         """
         Serialize and write a dictionary to a file as JSON.
@@ -223,6 +191,73 @@ class AsyncFS:
             bytes: Raw byte content.
         """
         return await self.read(path, lambda o: o)
+
+    async def read_file_chunks(self, file_path: str, chunk_size: int = CHUNK_SIZE, max_size: int = MAX_SIZE) -> bytes:
+        """
+        Read a local file using streaming in chunks up to a maximum size.
+
+        Args:
+            file_path: Local file path to read
+            max_size: Maximum number of bytes to read (default 10MB)
+            chunk_size: Chunk size for streaming (default 1MB)
+
+        Returns:
+            bytes: File content as bytes (up to max_size)
+        """
+
+        def _read_file_chunks():
+            content = bytearray()
+            bytes_read = 0
+            with open(file_path, "rb") as f:
+                while bytes_read < max_size:
+                    remaining = max_size - bytes_read
+                    read_size = min(chunk_size, remaining)
+                    chunk = f.read(read_size)
+                    if not chunk:
+                        break
+                    content.extend(chunk)
+                    bytes_read += len(chunk)
+            return bytes(content)
+
+        return await self._run(_read_file_chunks)
+
+    async def stream_copy(
+        self, source_path: str, dest_path: str, mkdirs: bool = True, chunk_size: int = CHUNK_SIZE
+    ) -> None:
+        """
+        Copy a local file to destination storage using streaming.
+
+        Args:
+            source_path: Local file path to copy from
+            dest_path (): Destination path in storage
+            mkdirs (bool): Create parent directories if needed
+            chunk_size (int):
+        """
+        # Resolve destination path
+        dest_path = dest_path if not _is_relative(dest_path) else f"{self._root}/{dest_path.lstrip('/')}"
+
+        # Apply compression if enabled
+        if self._compression == "gzip":
+            dest_path = dest_path.rstrip("/") + ".gz"
+
+        # Create parent directories
+        if mkdirs:
+            parent = dest_path.rsplit("/", 1)[0]
+            await self._run(self._fs.makedirs, parent, exist_ok=True)
+
+        def _stream_copy():
+            with open(source_path, "rb") as src:
+                if self._compression == "gzip":
+                    with self._fs.open(dest_path, "wb") as dst:
+                        with gzip.GzipFile(fileobj=dst, mode="wb") as gz_dst:
+                            while chunk := src.read(chunk_size):  # 1MB chunks
+                                gz_dst.write(chunk)
+                else:
+                    with self._fs.open(dest_path, "wb") as dst:
+                        while chunk := src.read(chunk_size):  # 1MB chunks
+                            dst.write(chunk)
+
+        await self._run(_stream_copy)
 
 
 def _is_relative(path: str) -> bool:
