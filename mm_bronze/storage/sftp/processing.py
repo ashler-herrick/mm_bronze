@@ -65,8 +65,7 @@ async def process_sftp_message(
 
         # Write to storage with custom success message
         storage_success = await write_to_storage(
-            fs, path, payload_bytes, file_uuid, 
-            log_success_message=f"Successfully stored SFTP file to {path}"
+            fs, path, payload_bytes, file_uuid, log_success_message=f"Successfully stored SFTP file to {path}"
         )
 
         # Only clean up original file if storage was successful
@@ -104,8 +103,6 @@ async def read_uploaded_file(file_path: str) -> bytes:
     except Exception as e:
         logger.error(f"Failed to read file {file_path}: {e}")
         raise
-
-
 
 
 def build_path_for_sftp_file(original_path: str, fp_hex: str, username: str, base_prefix: str = "bronze") -> str:
@@ -221,10 +218,6 @@ async def store_sftp_metadata(
                 status,
                 f"SFTP upload: {original_path} by {username} ({size} bytes)",
             )
-
-
-
-
 
 
 async def cleanup_uploaded_file(file_path: str, file_uuid: str) -> None:

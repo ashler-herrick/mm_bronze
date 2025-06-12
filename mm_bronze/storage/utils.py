@@ -3,6 +3,7 @@ Shared storage processing utilities for both API and SFTP ingestion.
 
 This module contains common functions used by both storage processors to avoid code duplication.
 """
+
 import logging
 import hashlib
 from typing import Optional
@@ -69,13 +70,13 @@ async def write_to_storage(
     try:
         await fs.write_bytes(str(path), data)
         await log_ingestion(uid, "complete", None)
-        
+
         # Log success with custom message if provided, otherwise use default
         if log_success_message:
             logger.info(log_success_message)
         else:
             logger.info(f"Successfully stored data to {path}")
-        
+
         return True
     except Exception as e:
         logger.exception("Failed to write payload for %s", uid)

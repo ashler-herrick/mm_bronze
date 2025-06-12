@@ -49,8 +49,6 @@ async def process_message(
     await write_to_storage(fs, path, payload_bytes, uid)
 
 
-
-
 def build_path_by_fp(event: Dict[str, str], fp_hex: str, base_prefix: str = "bronze") -> str:
     """
     Construct a storage path using event metadata and fingerprint.
@@ -131,7 +129,3 @@ async def store_metadata(event: Dict[str, str], fingerprint: bytes, path: str) -
                 uid,
                 status,
             )
-
-
-
-
