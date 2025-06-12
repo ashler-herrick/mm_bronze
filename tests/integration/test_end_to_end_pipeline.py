@@ -589,10 +589,6 @@ def test_dual_ingestion_pipeline():
                 f.write(test_content)
             print(f"✓ Basic write test successful: {test_filename}")
 
-            # Clean up test file
-            sftp.remove(test_filename)
-            print("✓ Test file cleanup successful")
-
         except Exception as write_test_e:
             print(f"✗ Basic write test failed: {write_test_e}")
 
@@ -627,10 +623,6 @@ def test_dual_ingestion_pipeline():
                     print(f"Testing with small file: {temp_file.name} -> {small_remote_path}")
                     sftp.put(temp_file.name, small_remote_path)
                     print("✓ Small file upload successful!")
-
-                    # Clean up small test file
-                    sftp.remove(small_remote_path)
-                    print("✓ Small file cleanup successful")
 
                 # Clean up temp file
                 import os

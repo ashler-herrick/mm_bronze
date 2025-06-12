@@ -117,9 +117,9 @@ def cleanup_test_files(*paths: Path) -> None:
             pass
 
 
-# Tests for read_file_chunks method
+# Tests for read_chunks_local method
 @pytest.mark.asyncio
-async def test_read_file_chunks_small_file():
+async def test_read_chunks_local_small_file():
     """Test reading a file smaller than chunk size."""
     test_file = DATA_DIR / "small_test.txt"
     test_content = b"This is a small test file content."
@@ -127,7 +127,7 @@ async def test_read_file_chunks_small_file():
     create_binary_test_file(test_file, test_content)
 
     try:
-        result = await TEST_AFS.read_file_chunks(str(test_file))
+        result = await AsyncFS.read_chunks_local(str(test_file))
         assert result == test_content
         assert len(result) == len(test_content)
     finally:
@@ -135,7 +135,7 @@ async def test_read_file_chunks_small_file():
 
 
 @pytest.mark.asyncio
-async def test_read_file_chunks_large_file_within_limit():
+async def test_read_chunks_local_large_file_within_limit():
     """Test reading a file larger than chunk size but within max_size."""
     test_file = DATA_DIR / "large_test.txt"
     # Create a file that's 2MB (larger than default 1MB chunk, smaller than 10MB max)
@@ -144,7 +144,7 @@ async def test_read_file_chunks_large_file_within_limit():
     create_test_file(test_file, file_size, b"A")
 
     try:
-        result = await TEST_AFS.read_file_chunks(str(test_file))
+        result = await AsyncFS.read_chunks_local(str(test_file))
         assert len(result) == file_size
         assert result[:100] == b"A" * 100  # Verify content pattern
     finally:
@@ -152,7 +152,7 @@ async def test_read_file_chunks_large_file_within_limit():
 
 
 @pytest.mark.asyncio
-async def test_read_file_chunks_max_size_limit():
+async def test_read_chunks_local_max_size_limit():
     """Test that max_size limit is enforced."""
     test_file = DATA_DIR / "huge_test.txt"
     # Create a file larger than max_size
@@ -162,7 +162,7 @@ async def test_read_file_chunks_max_size_limit():
     create_test_file(test_file, file_size, b"B")
 
     try:
-        result = await TEST_AFS.read_file_chunks(str(test_file), max_size=max_size)
+        result = await AsyncFS.read_chunks_local(str(test_file), max_size=max_size)
         assert len(result) == max_size
         assert result[:100] == b"B" * 100  # Verify content pattern
     finally:
@@ -170,7 +170,7 @@ async def test_read_file_chunks_max_size_limit():
 
 
 @pytest.mark.asyncio
-async def test_read_file_chunks_custom_chunk_size():
+async def test_read_chunks_local_custom_chunk_size():
     """Test reading with custom chunk size."""
     test_file = DATA_DIR / "chunk_test.txt"
     test_content = b"Custom chunk size test content with some data to read."
@@ -179,21 +179,21 @@ async def test_read_file_chunks_custom_chunk_size():
     create_binary_test_file(test_file, test_content)
 
     try:
-        result = await TEST_AFS.read_file_chunks(str(test_file), chunk_size=custom_chunk_size)
+        result = await AsyncFS.read_chunks_local(str(test_file), chunk_size=custom_chunk_size)
         assert result == test_content
     finally:
         cleanup_test_files(test_file)
 
 
 @pytest.mark.asyncio
-async def test_read_file_chunks_empty_file():
+async def test_read_chunks_local_empty_file():
     """Test reading an empty file."""
     test_file = DATA_DIR / "empty_test.txt"
 
     create_binary_test_file(test_file, b"")
 
     try:
-        result = await TEST_AFS.read_file_chunks(str(test_file))
+        result = await AsyncFS.read_chunks_local(str(test_file))
         assert result == b""
         assert len(result) == 0
     finally:
@@ -201,7 +201,7 @@ async def test_read_file_chunks_empty_file():
 
 
 @pytest.mark.asyncio
-async def test_read_file_chunks_exact_chunk_size():
+async def test_read_chunks_local_exact_chunk_size():
     """Test reading a file with size exactly equal to chunk size."""
     test_file = DATA_DIR / "exact_chunk_test.txt"
     chunk_size = 1024
@@ -209,7 +209,7 @@ async def test_read_file_chunks_exact_chunk_size():
     create_test_file(test_file, chunk_size, b"C")
 
     try:
-        result = await TEST_AFS.read_file_chunks(str(test_file), chunk_size=chunk_size)
+        result = await AsyncFS.read_chunks_local(str(test_file), chunk_size=chunk_size)
         assert len(result) == chunk_size
         assert result[:10] == b"C" * 10
     finally:
@@ -217,7 +217,7 @@ async def test_read_file_chunks_exact_chunk_size():
 
 
 @pytest.mark.asyncio
-async def test_read_file_chunks_exact_max_size():
+async def test_read_chunks_local_exact_max_size():
     """Test reading a file with size exactly equal to max_size."""
     test_file = DATA_DIR / "exact_max_test.txt"
     max_size = 1024 * 1024  # 1MB
@@ -225,7 +225,7 @@ async def test_read_file_chunks_exact_max_size():
     create_test_file(test_file, max_size, b"D")
 
     try:
-        result = await TEST_AFS.read_file_chunks(str(test_file), max_size=max_size)
+        result = await AsyncFS.read_chunks_local(str(test_file), max_size=max_size)
         assert len(result) == max_size
         assert result[:10] == b"D" * 10
     finally:
@@ -233,7 +233,7 @@ async def test_read_file_chunks_exact_max_size():
 
 
 @pytest.mark.asyncio
-async def test_read_file_chunks_binary_data():
+async def test_read_chunks_local_binary_data():
     """Test reading binary data to ensure no encoding issues."""
     test_file = DATA_DIR / "binary_test.bin"
     # Create binary data with various byte values
@@ -242,16 +242,16 @@ async def test_read_file_chunks_binary_data():
     create_binary_test_file(test_file, binary_content)
 
     try:
-        result = await TEST_AFS.read_file_chunks(str(test_file))
+        result = await AsyncFS.read_chunks_local(str(test_file))
         assert result == binary_content
         assert len(result) == len(binary_content)
     finally:
         cleanup_test_files(test_file)
 
 
-# Tests for stream_copy method
+# Tests for stream_copy_from_local method
 @pytest.mark.asyncio
-async def test_stream_copy_basic_no_compression():
+async def test_stream_copy_from_local_basic_no_compression():
     """Test basic file copy without compression."""
     source_file = DATA_DIR / "source_copy_test.txt"
     dest_file = "dest_copy_test.txt"
@@ -263,7 +263,7 @@ async def test_stream_copy_basic_no_compression():
     create_binary_test_file(source_file, test_content)
 
     try:
-        await no_compress_afs.stream_copy(str(source_file), dest_file)
+        await no_compress_afs.stream_copy_from_local(str(source_file), dest_file)
 
         dest_path = DATA_DIR / dest_file
         assert dest_path.exists()
@@ -275,7 +275,7 @@ async def test_stream_copy_basic_no_compression():
 
 
 @pytest.mark.asyncio
-async def test_stream_copy_with_gzip():
+async def test_stream_copy_from_local_with_gzip():
     """Test file copy with GZIP compression."""
     source_file = DATA_DIR / "source_gzip_test.txt"
     dest_file = "dest_gzip_test.txt"
@@ -284,7 +284,7 @@ async def test_stream_copy_with_gzip():
     create_binary_test_file(source_file, test_content)
 
     try:
-        await TEST_AFS.stream_copy(str(source_file), dest_file)
+        await TEST_AFS.stream_copy_from_local(str(source_file), dest_file)
 
         # Should create .gz file
         dest_path = DATA_DIR / f"{dest_file}.gz"
@@ -301,7 +301,7 @@ async def test_stream_copy_with_gzip():
 
 
 @pytest.mark.asyncio
-async def test_stream_copy_with_mkdirs():
+async def test_stream_copy_from_local_with_mkdirs():
     """Test copy with automatic directory creation."""
     source_file = DATA_DIR / "source_mkdirs_test.txt"
     dest_file = "nested/dirs/dest_mkdirs_test.txt"
@@ -312,7 +312,7 @@ async def test_stream_copy_with_mkdirs():
     create_binary_test_file(source_file, test_content)
 
     try:
-        await no_compress_afs.stream_copy(str(source_file), dest_file, mkdirs=True)
+        await no_compress_afs.stream_copy_from_local(str(source_file), dest_file, mkdirs=True)
 
         dest_path = DATA_DIR / dest_file
         assert dest_path.exists()
@@ -330,7 +330,7 @@ async def test_stream_copy_with_mkdirs():
 
 
 @pytest.mark.asyncio
-async def test_stream_copy_large_file():
+async def test_stream_copy_from_local_large_file():
     """Test copying a large file with chunked streaming."""
     source_file = DATA_DIR / "large_source_test.txt"
     dest_file = "large_dest_test.txt"
@@ -342,7 +342,7 @@ async def test_stream_copy_large_file():
     create_test_file(source_file, file_size, b"L")
 
     try:
-        await no_compress_afs.stream_copy(str(source_file), dest_file)
+        await no_compress_afs.stream_copy_from_local(str(source_file), dest_file)
 
         dest_path = DATA_DIR / dest_file
         assert dest_path.exists()
@@ -363,7 +363,7 @@ async def test_stream_copy_large_file():
 
 
 @pytest.mark.asyncio
-async def test_stream_copy_custom_chunk_size():
+async def test_stream_copy_from_local_custom_chunk_size():
     """Test copy with custom chunk size."""
     source_file = DATA_DIR / "chunk_source_test.txt"
     dest_file = "chunk_dest_test.txt"
@@ -375,7 +375,7 @@ async def test_stream_copy_custom_chunk_size():
     create_binary_test_file(source_file, test_content)
 
     try:
-        await no_compress_afs.stream_copy(str(source_file), dest_file, chunk_size=custom_chunk_size)
+        await no_compress_afs.stream_copy_from_local(str(source_file), dest_file, chunk_size=custom_chunk_size)
 
         dest_path = DATA_DIR / dest_file
         assert dest_path.exists()
@@ -387,7 +387,7 @@ async def test_stream_copy_custom_chunk_size():
 
 
 @pytest.mark.asyncio
-async def test_stream_copy_empty_file():
+async def test_stream_copy_from_local_empty_file():
     """Test copying an empty file."""
     source_file = DATA_DIR / "empty_source_test.txt"
     dest_file = "empty_dest_test.txt"
@@ -397,7 +397,7 @@ async def test_stream_copy_empty_file():
     create_binary_test_file(source_file, b"")
 
     try:
-        await no_compress_afs.stream_copy(str(source_file), dest_file)
+        await no_compress_afs.stream_copy_from_local(str(source_file), dest_file)
 
         dest_path = DATA_DIR / dest_file
         assert dest_path.exists()
@@ -409,7 +409,7 @@ async def test_stream_copy_empty_file():
 
 
 @pytest.mark.asyncio
-async def test_stream_copy_binary_data():
+async def test_stream_copy_from_local_binary_data():
     """Test copying binary data integrity."""
     source_file = DATA_DIR / "binary_source_test.bin"
     dest_file = "binary_dest_test.bin"
@@ -421,7 +421,7 @@ async def test_stream_copy_binary_data():
     create_binary_test_file(source_file, binary_content)
 
     try:
-        await no_compress_afs.stream_copy(str(source_file), dest_file)
+        await no_compress_afs.stream_copy_from_local(str(source_file), dest_file)
 
         dest_path = DATA_DIR / dest_file
         assert dest_path.exists()

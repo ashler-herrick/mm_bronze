@@ -178,7 +178,7 @@ class AsyncFS:
             path (str): Destination file path.
             obj (bytes): Raw byte data to write.
         """
-        await self.write(path, obj, lambda o: o, True)
+        await self.write(path, obj, lambda o: o, True, mkdirs=mkdirs)
 
     async def read_bytes(self, path: str) -> bytes:
         """
@@ -192,9 +192,13 @@ class AsyncFS:
         """
         return await self.read(path, lambda o: o)
 
-    async def read_file_chunks(self, file_path: str, chunk_size: int = CHUNK_SIZE, max_size: int = MAX_SIZE) -> bytes:
+    @staticmethod
+    async def read_chunks_local(file_path: str, chunk_size: int = CHUNK_SIZE, max_size: int = MAX_SIZE) -> bytes:
         """
         Read a local file using streaming in chunks up to a maximum size.
+        
+        This is a static method as it always reads from the local filesystem,
+        independent of the AsyncFS instance configuration.
 
         Args:
             file_path: Local file path to read
@@ -204,8 +208,7 @@ class AsyncFS:
         Returns:
             bytes: File content as bytes (up to max_size)
         """
-
-        def _read_file_chunks():
+        def _read_chunks():
             content = bytearray()
             bytes_read = 0
             with open(file_path, "rb") as f:
@@ -219,19 +222,23 @@ class AsyncFS:
                     bytes_read += len(chunk)
             return bytes(content)
 
-        return await self._run(_read_file_chunks)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _read_chunks)
 
-    async def stream_copy(
-        self, source_path: str, dest_path: str, mkdirs: bool = True, chunk_size: int = CHUNK_SIZE
+    async def stream_copy_from_local(
+        self, local_source_path: str, dest_path: str, mkdirs: bool = True, chunk_size: int = CHUNK_SIZE
     ) -> None:
         """
-        Copy a local file to destination storage using streaming.
+        Copy a local file to configured storage using streaming.
+        
+        This method copies from the local filesystem to the storage filesystem
+        configured for this AsyncFS instance.
 
         Args:
-            source_path: Local file path to copy from
-            dest_path (): Destination path in storage
+            local_source_path: Local file path to copy from
+            dest_path: Destination path in configured storage
             mkdirs (bool): Create parent directories if needed
-            chunk_size (int):
+            chunk_size (int): Size of chunks for streaming copy
         """
         # Resolve destination path
         dest_path = dest_path if not _is_relative(dest_path) else f"{self._root}/{dest_path.lstrip('/')}"
@@ -246,7 +253,7 @@ class AsyncFS:
             await self._run(self._fs.makedirs, parent, exist_ok=True)
 
         def _stream_copy():
-            with open(source_path, "rb") as src:
+            with open(local_source_path, "rb") as src:
                 if self._compression == "gzip":
                     with self._fs.open(dest_path, "wb") as dst:
                         with gzip.GzipFile(fileobj=dst, mode="wb") as gz_dst:

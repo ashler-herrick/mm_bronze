@@ -8,7 +8,7 @@ from asyncpg import UniqueViolationError
 
 from mm_bronze.common.db import get_pool
 from mm_bronze.common.fs import AsyncFS
-from mm_bronze.storage.utils import compute_fingerprint, log_ingestion, write_to_storage
+from mm_bronze.storage.utils import compute_fingerprint, log_ingestion, write_to_storage_streaming
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ async def process_sftp_message(
     logger.info(f"Processing SFTP file: {file_path} (size: {size}) uploaded by {username}")
 
     try:
-        # Read file contents
-        payload_bytes = await read_uploaded_file(file_path)
+        # Read file contents using chunked reading (first 10MB for fingerprinting)
+        payload_bytes = await AsyncFS.read_chunks_local(file_path)
 
         # Compute fingerprint
         fingerprint = compute_fingerprint(payload_bytes)
@@ -63,9 +63,9 @@ async def process_sftp_message(
             storage_path=path,
         )
 
-        # Write to storage with custom success message
-        storage_success = await write_to_storage(
-            fs, path, payload_bytes, file_uuid, log_success_message=f"Successfully stored SFTP file to {path}"
+        # Write to storage using stream copy for SFTP files
+        storage_success = await write_to_storage_streaming(
+            fs, file_path, path, file_uuid, log_success_message=f"Successfully stored SFTP file to {path}"
         )
 
         # Only clean up original file if storage was successful

@@ -82,3 +82,36 @@ async def write_to_storage(
         logger.exception("Failed to write payload for %s", uid)
         await log_ingestion(uid, "failed", str(e))
         return False
+
+
+async def write_to_storage_streaming(
+    fs: AsyncFS, source_path: str, dest_path: str, uid: str, log_success_message: Optional[str] = None
+) -> bool:
+    """
+    Write file to storage using streaming copy and log completion or failure.
+
+    Args:
+        fs: AsyncFS filesystem client.
+        source_path: Local file path to copy from.
+        dest_path: Relative storage path to copy to.
+        uid: The unique identifier for logging purposes.
+        log_success_message: Optional custom message to log on success.
+
+    Returns:
+        bool: True if storage write was successful, False otherwise.
+    """
+    try:
+        await fs.stream_copy_from_local(source_path, str(dest_path))
+        await log_ingestion(uid, "complete", None)
+
+        # Log success with custom message if provided, otherwise use default
+        if log_success_message:
+            logger.info(log_success_message)
+        else:
+            logger.info(f"Successfully stored file to {dest_path}")
+
+        return True
+    except Exception as e:
+        logger.exception("Failed to write file for %s", uid)
+        await log_ingestion(uid, "failed", str(e))
+        return False
