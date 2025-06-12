@@ -49,26 +49,16 @@ Data Flow:
    cd mm_bronze
    ```
 
-2. **Install dependencies**
+2. **Run the init script**
    ```bash
-   uv sync
+   ./scripts/install.sh
+   ```
+   or
+   ```powershell
+   ./scripts/install.ps1
    ```
 
-3. **Create a .env file from the example.env**
-   ```bash
-   cp example.env .env
-   ```
-
-4. **Create a local directory for mounting the containers.**
-   ```bash
-   mkdir -p ./data/raw_storage
-   ```
-5. **Set up test SFTP keys (Optional)**
-   ```bash
-   ./scripts/setup_dev_keys.sh
-   ```
-
-6. **Start the platform** 
+3. **Start the platform** 
    ```bash
    docker-compose up --build -d
    ```
@@ -78,7 +68,7 @@ That's it! The platform will start with:
 - SFTP server at `localhost:2222` 
 - All supporting services (Kafka, PostgreSQL)
 
-**Note:** The repository includes a development `.env` file with safe localhost configuration. For local customization, create a `.env` file to override specific values.
+**Note:** The repository includes a development `.env.example` file with safe localhost configuration. For local customization, override specific values in the `.env`.
 
 ### Basic Usage
 
