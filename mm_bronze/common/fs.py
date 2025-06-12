@@ -196,7 +196,7 @@ class AsyncFS:
     async def read_chunks_local(file_path: str, chunk_size: int = CHUNK_SIZE, max_size: int = MAX_SIZE) -> bytes:
         """
         Read a local file using streaming in chunks up to a maximum size.
-        
+
         This is a static method as it always reads from the local filesystem,
         independent of the AsyncFS instance configuration.
 
@@ -208,6 +208,7 @@ class AsyncFS:
         Returns:
             bytes: File content as bytes (up to max_size)
         """
+
         def _read_chunks():
             content = bytearray()
             bytes_read = 0
@@ -230,7 +231,7 @@ class AsyncFS:
     ) -> None:
         """
         Copy a local file to configured storage using streaming.
-        
+
         This method copies from the local filesystem to the storage filesystem
         configured for this AsyncFS instance.
 

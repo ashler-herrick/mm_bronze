@@ -120,25 +120,8 @@ Background Kafka consumers that persist data to configured storage backends:
 
 ### Environment Variables
 
-The repository includes a development `.env` file with safe localhost configuration. Key settings include:
+The repository includes a development `.env.example` file with a default configuration. You will have to change the RAW_STORAGE_URL if you want to persist data to a local folder.
 
-```env
-# Kafka Configuration (optimized for performance)
-KAFKA_COMPRESSION_TYPE=none
-KAFKA_MAX_MESSAGE_SIZE=8388608  # 8MB
-
-# Database (points to Docker container)
-POSTGRES_DSN=postgres://meta_user:meta_pass@postgres:5432/metadata
-
-# SFTP (test credentials for development)
-SFTP_USERS=alice:secret:read+write+delete
-
-# Storage (local filesystem for development)
-RAW_STORAGE_URL=file:///path/to/test/storage
-```
-
-For local customization, create a `.env` file to override specific values without affecting the shared development configuration.
-You will need to update references
 ## Database Schema
 
 PostgreSQL database "metadata" with schema "ingestion":
@@ -197,10 +180,10 @@ docker-compose up storage_sftp   # SFTP storage processor only
 
 ```bash
 # Linting
-ruff check
+uvx ruff check
 
 # Formatting
-ruff format
+uvx ruff format
 ```
 
 ## Testing & Validation
@@ -281,23 +264,6 @@ The platform includes several consolidated utility scripts:
 - **Upload Directory**: Root directory (files uploaded here are automatically processed)
 - **Supported Formats**: Any file format (processed based on extension/content)
 
-## Supported Data Formats
-
-- **FHIR R4**: JSON and XML bundles, individual resources
-- **HL7 v2.x**: Standard HL7 messages
-- **Custom Healthcare Formats**: Extensible format support
-- **Bulk Data**: Large file and batch processing
-
-## Storage Backends
-
-Configured via fsspec, supporting:
-
-- **Local Filesystem**: Default development setup
-- **Amazon S3**: Production cloud storage
-- **Azure Blob Storage**: Enterprise cloud storage
-- **Google Cloud Storage**: Multi-cloud support
-- **Custom Backends**: Any fsspec-compatible storage
-
 ### Log Monitoring
 
 Service logs available via Docker Compose:
@@ -327,17 +293,6 @@ docker-compose logs -f storage_api
    - Verify PostgreSQL is running: `docker-compose ps postgres`
    - Check database credentials in `.env`
 
-### Performance Tuning
-
-1. **Kafka Optimization**
-   - Keep compression disabled for maximum throughput
-   - Adjust `KAFKA_MAX_MESSAGE_SIZE` for large payloads
-   - Monitor consumer group lag
-
-2. **Storage Optimization**
-   - Use appropriate storage backend for your use case
-   - Consider data partitioning strategies
-   - Monitor disk I/O and network bandwidth
 
 ## Contributing
 
@@ -347,11 +302,10 @@ When contributing to the platform:
    ```bash
    git clone git@github.com:ashler-herrick/mm_bronze.git
    cd mm_bronze
-   uv sync            
-   docker-compose up  # Start the platform
+   ./scripts/install.sh
    ```
 
-2. **Code Quality**: Run `ruff check` and `ruff format` before committing
+2. **Code Quality**: Run `uvx ruff check` and `uvx ruff format` before committing
 
 3. **Testing**: Ensure all tests pass with `uv run pytest`
 
