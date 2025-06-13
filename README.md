@@ -9,7 +9,7 @@ mm_bronze is a microservices-based data ingestion platform that provides:
 - **Multi-Protocol Ingestion**: REST API and SFTP server for flexible data intake
 - **Event-Driven Architecture**: Kafka-based messaging for reliable data processing
 - **Pluggable Storage**: Support for local filesystem, S3, and other storage backends
-- **Healthcare Focus**: Optimized for FHIR, HL7, and medical data formats
+- **Healthcare Focus**: Optimized for FHIR, HL7, and bulk medical data transfer
 - **Metadata Tracking**: PostgreSQL-based tracking with global deduplication
 
 ## Architecture
