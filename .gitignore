@@ -13,7 +13,6 @@ logs
 .venv
 
 #test_data
-tests/test_data/
 data/
 
 #sftp 

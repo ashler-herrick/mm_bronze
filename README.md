@@ -136,6 +136,12 @@ PostgreSQL database "metadata" with schema "ingestion":
 ## Development
 
 ### Running Tests
+Before running tests it is useful to download the Synthea Coherent dataset.
+```bash
+aws s3 ls --no-sign-request s3://synthea-open-data/coherent/
+```
+
+You will need to alter the test data path in tests/integration/synthea_utils.py to point to your downloaded dataset.
 
 ```bash
 # Run all tests
